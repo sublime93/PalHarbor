@@ -1,0 +1,30 @@
+{
+  "name": "@paldeck/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "test": "vitest run src",
+    "typecheck": "vue-tsc -b"
+  },
+  "dependencies": {
+    "@fontsource/barlow-condensed": "latest",
+    "@fontsource/dm-sans": "latest",
+    "@lucide/vue": "latest",
+    "leaflet": "1.9.4",
+    "vue": "latest",
+    "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "latest",
+    "@types/leaflet": "1.9.21",
+    "@types/node": "latest",
+    "@vitejs/plugin-vue": "latest",
+    "@vue/tsconfig": "latest",
+    "typescript": "^5.9.3",
+    "vite": "latest",
+    "vitest": "latest",
+    "vue-tsc": "latest"
+  }
+}
