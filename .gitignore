@@ -10,3 +10,8 @@ coverage/
 apps/api/data/*.sqlite
 apps/api/data/*.sqlite-shm
 apps/api/data/*.sqlite-wal
+packages/database/*.sqlite
+packages/database/*.sqlite-shm
+packages/database/*.sqlite-wal
+packages/database/generated/
+packages/database/prisma/.generated/

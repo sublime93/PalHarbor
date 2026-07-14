@@ -6,14 +6,17 @@
     "node": ">=24.15"
   },
   "scripts": {
+    "predev": "pnpm --filter @paldeck/database build",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "pretest": "pnpm --filter @paldeck/database build",
     "test": "vitest run src",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@fastify/static": "latest",
+    "@paldeck/database": "workspace:*",
     "dotenv": "latest",
     "fastify": "latest"
   },

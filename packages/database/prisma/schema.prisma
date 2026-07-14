@@ -1,0 +1,70 @@
+// This is the canonical data model for every supported database. The build
+// renders provider-specific schemas because Prisma embeds the connector and
+// generated-client output path at generation time.
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/client"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Player {
+  userId         String                  @id @map("user_id")
+  playerId       String?                 @map("player_id")
+  name           String                  @default("")
+  accountName    String                  @default("") @map("account_name")
+  lastLevel      Int?                    @map("last_level")
+  firstSeenAt    BigInt                  @map("first_seen_at")
+  lastSeenAt     BigInt                  @map("last_seen_at")
+  sessions       Session[]
+  ipObservations PlayerIpObservation[]
+  latencyDaily   PlayerLatencyDaily[]
+
+  @@map("players")
+}
+
+model Session {
+  id                  Int     @id @default(autoincrement())
+  userId              String  @map("user_id")
+  connectedAt         BigInt  @map("connected_at")
+  lastSeenAt          BigInt  @map("last_seen_at")
+  disconnectedAt      BigInt? @map("disconnected_at")
+  durationSeconds     Int     @default(0) @map("duration_seconds")
+  active              Boolean @default(true)
+  player              Player  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([connectedAt(sort: Desc)], map: "sessions_connected_at")
+  @@index([userId, connectedAt(sort: Desc)], map: "sessions_user_connected_at")
+  @@index([active], map: "sessions_active")
+  @@map("sessions")
+}
+
+model PlayerIpObservation {
+  userId           String @map("user_id")
+  ipAddress        String @map("ip_address")
+  firstSeenAt      BigInt @map("first_seen_at")
+  lastSeenAt       BigInt @map("last_seen_at")
+  observationCount Int    @default(1) @map("observation_count")
+  player           Player @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, ipAddress])
+  @@index([lastSeenAt(sort: Desc)], map: "player_ip_observations_last_seen")
+  @@index([ipAddress, lastSeenAt(sort: Desc)], map: "player_ip_observations_address")
+  @@map("player_ip_observations")
+}
+
+model PlayerLatencyDaily {
+  userId       String @map("user_id")
+  dayStart     BigInt @map("day_start")
+  latencySumMs Float  @map("latency_sum_ms")
+  sampleCount  Int    @map("sample_count")
+  player       Player @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, dayStart])
+  @@index([dayStart, userId], map: "player_latency_daily_day_start")
+  @@map("player_latency_daily")
+}
