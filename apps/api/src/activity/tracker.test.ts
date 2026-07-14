@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ActivityRepository } from './repository.js'
+import type { ActivityRepository } from '@paldeck/database'
 import { ActivityTracker } from './tracker.js'
 
 function deferred<T>() {

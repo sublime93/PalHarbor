@@ -10,6 +10,7 @@ export type ServerConfig = {
 }
 
 export type ActivityConfig = {
+  databaseUrl?: string
   databasePath?: string
   pollIntervalMs: number
 }
@@ -41,8 +42,10 @@ export function loadActivityConfig(env: NodeJS.ProcessEnv = process.env): Activi
     ? pollSeconds
     : DEFAULT_ACTIVITY_POLL_SECONDS
   const databasePath = env.ACTIVITY_DATABASE_PATH?.trim()
+  const databaseUrl = env.DATABASE_URL?.trim()
 
   return {
+    ...(databaseUrl ? { databaseUrl } : {}),
     ...(databasePath ? { databasePath } : {}),
     pollIntervalMs: Math.round(boundedSeconds * 1_000),
   }

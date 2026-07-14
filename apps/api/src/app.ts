@@ -1,12 +1,11 @@
 import fastifyStatic from '@fastify/static'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { FastifyInstance, FastifyServerOptions } from 'fastify'
+import { ActivityRepository, createDatabase } from '@paldeck/database'
 import {
-  ActivityRepository,
   ActivityTracker,
-  openActivityDatabase,
   type ActivityPlayerSnapshot,
 } from './activity/index.js'
 import {
@@ -24,6 +23,8 @@ export type CreateAppOptions = {
   logger?: FastifyServerOptions['logger']
   webDist?: string | false
   activity?: false | {
+    databaseUrl?: string
+    /** @deprecated Prefer databaseUrl. */
     databasePath?: string
     pollIntervalMs?: number
   }
@@ -89,17 +90,21 @@ export function createApp(
   const activityOptions = options.activity === false
     ? undefined
     : {
-        databasePath: options.activity?.databasePath
-          ?? activityConfig.databasePath
-          ?? defaultActivityDatabase,
+        databaseUrl: options.activity?.databaseUrl
+          ?? activityConfig.databaseUrl
+          ?? (options.activity?.databasePath
+            ? pathToFileURL(resolve(options.activity.databasePath)).href
+            : activityConfig.databasePath
+              ? pathToFileURL(resolve(activityConfig.databasePath)).href
+              : pathToFileURL(defaultActivityDatabase).href),
         pollIntervalMs: options.activity?.pollIntervalMs ?? activityConfig.pollIntervalMs,
       }
 
   let activityRepository: ActivityRepository | undefined
   let activityTracker: ActivityTracker | undefined
   if (activityOptions) {
-    const activityDatabase = openActivityDatabase(activityOptions.databasePath)
-    activityRepository = new ActivityRepository(activityDatabase)
+    const activityDatabase = createDatabase(activityOptions.databaseUrl)
+    activityRepository = new ActivityRepository(activityDatabase.client)
     activityTracker = new ActivityTracker({
       repository: activityRepository,
       intervalMs: activityOptions.pollIntervalMs,
@@ -115,6 +120,10 @@ export function createApp(
       },
     })
 
+    app.addHook('onReady', async () => {
+      await activityDatabase.initialize()
+      await activityRepository?.initialize()
+    })
     app.addHook('onListen', async () => {
       activityTracker?.start()
       app.log.info(
@@ -124,8 +133,8 @@ export function createApp(
     })
     app.addHook('onClose', async () => {
       await activityTracker?.stop()
-      activityRepository?.closeAbandonedSessions()
-      activityDatabase.close()
+      await activityRepository?.closeAbandonedSessions()
+      await activityDatabase.disconnect()
     })
   }
 

@@ -1,8 +1,7 @@
-export { migrateActivityDatabase, openActivityDatabase } from './database.js'
-export { ActivityRepository } from './repository.js'
 export { ActivityTracker } from './tracker.js'
 export type { ActivityTrackerOptions, ActivityTrackerStatus } from './tracker.js'
 export {
+  ActivityRepository,
   ACTIVITY_PERIOD_DAYS,
   type ActivityDailyStat,
   type ActivityIpHistoryEntry,
@@ -12,4 +11,4 @@ export {
   type ActivityReconcileResult,
   type ActivitySummary,
   type ActivityTopPlayer,
-} from './types.js'
+} from '@paldeck/database'

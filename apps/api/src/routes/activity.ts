@@ -25,7 +25,7 @@ export function createActivitySummaryRoute(
         })
       }
 
-      const summary = repository.getSummary(days as ActivityPeriodDays)
+      const summary = await repository.getSummary(days as ActivityPeriodDays)
       const trackerStatus = tracker?.getStatus()
       const lastSuccessfulPollAt = trackerStatus?.lastSuccessfulPollAt ?? null
       const lastFailedPollAt = trackerStatus?.lastFailedPollAt ?? null

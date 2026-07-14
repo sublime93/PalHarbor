@@ -1,5 +1,4 @@
-import type { ActivityRepository } from './repository.js'
-import type { ActivityPlayerSnapshot } from './types.js'
+import type { ActivityPlayerSnapshot, ActivityRepository } from '@paldeck/database'
 
 export type ActivityTrackerOptions = {
   repository: ActivityRepository
@@ -96,7 +95,7 @@ export class ActivityTracker {
       const players = await this.getPlayers()
       if (this.running) {
         const observedAt = this.now()
-        this.repository.reconcilePlayers(players, observedAt)
+        await this.repository.reconcilePlayers(players, observedAt)
         this.lastSuccessfulPollTimestamp = observedAt
         this.latestPollSucceeded = true
       }

@@ -1,8 +1,9 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
-import { ActivityRepository, openActivityDatabase } from './activity/index.js'
+import { ActivityRepository, createDatabase } from '@paldeck/database'
 import { playerSnapshots } from './app.js'
 import { createApp, type GatewayConfig } from './server.js'
 
@@ -178,11 +179,13 @@ describe('Palworld gateway', () => {
       webDist: false,
       activity: { databasePath, pollIntervalMs: 15_000 },
     })
+    await app.ready()
 
-    const seedDatabase = openActivityDatabase(databasePath)
-    const repository = new ActivityRepository(seedDatabase, { closeAbandonedOnOpen: false })
+    const seedDatabase = createDatabase(pathToFileURL(databasePath).href)
+    await seedDatabase.initialize()
+    const repository = new ActivityRepository(seedDatabase.client, { closeAbandonedOnOpen: false })
     const connectedAt = Date.now() - 60_000
-    repository.reconcilePlayers([{
+    await repository.reconcilePlayers([{
       userId: 'steam_123',
       playerId: 'player-123',
       name: 'Lamball Tamer',
@@ -191,7 +194,7 @@ describe('Palworld gateway', () => {
       level: 42,
       ping: 73,
     }], connectedAt)
-    seedDatabase.close()
+    await seedDatabase.disconnect()
 
     try {
       const response = await app.inject({
