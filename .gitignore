@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+.idea/
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+apps/api/data/*.sqlite
+apps/api/data/*.sqlite-shm
+apps/api/data/*.sqlite-wal

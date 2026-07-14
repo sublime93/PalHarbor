@@ -1,0 +1,15 @@
+{
+  "name": "pal-monitor-workspace",
+  "private": true,
+  "packageManager": "pnpm@10.3.0",
+  "scripts": {
+    "dev": "concurrently -k -n gateway,web -c yellow,cyan \"pnpm --filter @paldeck/api dev\" \"pnpm --filter @paldeck/web dev\"",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "start": "pnpm --filter @paldeck/api start"
+  },
+  "devDependencies": {
+    "concurrently": "latest"
+  }
+}
