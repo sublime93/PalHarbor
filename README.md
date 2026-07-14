@@ -34,10 +34,11 @@ Then open [http://localhost:4174](http://localhost:4174).
 
 ## Project structure
 
-The pnpm workspace contains two applications:
+The pnpm workspace contains two applications and one shared package:
 
 - `apps/web` — Vue, Vite, and Vue Router. Each monitor area is a real page at `/overview`, `/players`, `/activity`, `/world`, `/settings`, or `/commands`. The persistent application shell owns one shared polling lifecycle across route changes.
-- `apps/api` — Fastify, Pino, and SQLite. `src/core` owns configuration, structured logging, and the Fastify factory; `src/router.ts` is the primitive route registrar; `src/routes` contains HTTP route definitions; `src/palworld` owns the endpoint policy and upstream client; and `src/activity` owns database migrations, session reconciliation, statistics queries, and the background tracker.
+- `apps/api` — Fastify and Pino. `src/core` owns configuration, structured logging, and the Fastify factory; `src/router.ts` is the primitive route registrar; `src/routes` contains HTTP route definitions; `src/palworld` owns the endpoint policy and upstream client; and `src/activity` owns the background tracker.
+- `packages/database` — Prisma ORM 7, the activity repository, the canonical data model, generated SQLite/PostgreSQL clients, and provider adapters.
 
 Production serves the built Vue application through Fastify, including history fallback for direct page links without turning missing `/api` requests into HTML responses.
 
@@ -45,16 +46,26 @@ Production serves the built Vue application through Fastify, including history f
 
 Activity collection runs inside Fastify and does not depend on a browser being open. Every successful Palworld player snapshot opens, updates, or closes durable sessions keyed by `userId`. Failed or malformed snapshots leave existing sessions untouched, preventing false disconnects during outages.
 
-The default database is `apps/api/data/paldeck.sqlite`, is created automatically, and is ignored by Git along with its WAL files. The database stores player IDs, names, levels, observed timestamps, historical IP-address observations, and daily latency rollups. Each player/address pair retains its first and latest sighting plus an observation count; optional client ports are removed before storage. Latency is kept as per-player daily totals and sample counts rather than raw polling records, which keeps storage bounded while supporting weighted reporting-period averages. Treat this file as sensitive—the gateway creates it with owner-only permissions where supported. Tracking begins when Paldeck is running, so it cannot reconstruct sessions or latency from before its first observation. Connection and disconnection times are estimates within the configured polling interval.
+Prisma ORM 7 backs activity storage. SQLite remains the default through Prisma's libSQL adapter; `apps/api/data/paldeck.sqlite` is created automatically and ignored by Git along with its WAL files. PostgreSQL is supported through Prisma's `pg` adapter. Set `DATABASE_URL` to select the provider at runtime.
+
+Both providers are generated from the single canonical model at `packages/database/prisma/schema.prisma`. Prisma embeds the datasource provider in its generated client, so the database package renders that model into ignored provider-specific schemas and initializes the matching client. Run `pnpm db:generate` after changing the canonical model.
+
+Both providers store player IDs, names, levels, observed timestamps, historical IP-address observations, and daily latency rollups. Each player/address pair retains its first and latest sighting plus an observation count; optional client ports are removed before storage. Latency is kept as per-player daily totals and sample counts rather than raw polling records, which keeps storage bounded while supporting weighted reporting-period averages. Treat the database as sensitive. Tracking begins when Paldeck is running, so it cannot reconstruct sessions or latency from before its first observation. Connection and disconnection times are estimates within the configured polling interval.
 
 Optional settings in `apps/api/.env`:
 
 ```dotenv
-ACTIVITY_DATABASE_PATH=./data/paldeck.sqlite
+DATABASE_URL=file:./data/paldeck.sqlite
 ACTIVITY_POLL_SECONDS=15
 ```
 
-The Activity page reads `GET /api/activity/summary?days=7|14|30|90` and shows tracked players, sessions, total and average playtime, current sessions, daily activity, top players, per-player average latency with sample counts and quality labels, recent connection history, and IP records last observed during the selected period. Node.js 24.15 or newer is required for the built-in SQLite runtime.
+For PostgreSQL, create the database first and use a standard connection URL:
+
+```dotenv
+DATABASE_URL=postgresql://paldeck:replace-me@127.0.0.1:5432/paldeck
+```
+
+The legacy `ACTIVITY_DATABASE_PATH` setting is still accepted for SQLite, but `DATABASE_URL` is preferred. The Activity page reads `GET /api/activity/summary?days=7|14|30|90` and shows tracked players, sessions, total and average playtime, current sessions, daily activity, top players, per-player average latency with sample counts and quality labels, recent connection history, and IP records last observed during the selected period. Node.js 24.15 or newer is required.
 
 ## Validation
 
