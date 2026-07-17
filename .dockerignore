@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+**/.vitepress/cache
+**/coverage
+**/data
+**/dist
+**/node_modules
+**/generated
+**/prisma/.generated
+*.log
+.env*
+map-sources
+playwright-report
+test-results

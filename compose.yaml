@@ -1,0 +1,25 @@
+services:
+  palharbor:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4174:4174'
+    environment:
+      PALWORLD_API_URL: ${PALWORLD_API_URL:-http://host.docker.internal:8212/v1/api}
+      PALWORLD_USERNAME: ${PALWORLD_USERNAME:?Set PALWORLD_USERNAME}
+      PALWORLD_PASSWORD: ${PALWORLD_PASSWORD:?Set PALWORLD_PASSWORD}
+      PALHARBOR_USERNAME: ${PALHARBOR_USERNAME:?Set PALHARBOR_USERNAME}
+      PALHARBOR_PASSWORD: ${PALHARBOR_PASSWORD:?Set PALHARBOR_PASSWORD}
+      MAP_DATA_PATH: /prod/api/data/maps
+      PALWORLD_SERVER_ROOT: ${PALWORLD_SERVER_ROOT:-}
+      PALWORLD_MAP_PALPAGOS_SOURCE: ${PALWORLD_MAP_PALPAGOS_SOURCE:-}
+      PALWORLD_MAP_WORLD_TREE_SOURCE: ${PALWORLD_MAP_WORLD_TREE_SOURCE:-}
+      PALWORLD_CAVE_ENTRANCES_SOURCE: ${PALWORLD_CAVE_ENTRANCES_SOURCE:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - palharbor-data:/prod/api/data
+      - ${PALWORLD_MAP_SOURCE_DIR:-./map-sources}:/map-sources:ro
+
+volumes:
+  palharbor-data:

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.15.0
+      - name: Enable pinned pnpm
+        run: corepack enable
+      - name: Install dependencies
+        run: corepack pnpm@11.4.0 --pm-on-fail=ignore install --frozen-lockfile
+      - name: Audit production dependencies
+        run: corepack pnpm@11.4.0 --pm-on-fail=ignore audit --prod --audit-level high
+      - name: Run repository checks
+        run: corepack pnpm@11.4.0 --pm-on-fail=ignore check
+      - name: Install Chromium
+        run: corepack pnpm@11.4.0 --pm-on-fail=ignore exec playwright install --with-deps chromium
+      - name: Run production browser tests
+        run: corepack pnpm@11.4.0 --pm-on-fail=ignore test:e2e
+      - name: Build production container
+        run: docker build --tag palharbor:ci .
