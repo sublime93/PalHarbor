@@ -1,9 +1,10 @@
-import type { ActivityPlayerSnapshot, ActivityRepository } from '@paldeck/database'
+import type { ActivityPlayerSnapshot, ActivityRepository } from '@app/database'
 
 export type ActivityTrackerOptions = {
   repository: ActivityRepository
   getPlayers: () => Promise<readonly ActivityPlayerSnapshot[]>
   intervalMs?: number
+  retentionDays?: number
   now?: () => number
   onError?: (error: unknown) => void
 }
@@ -21,6 +22,7 @@ export class ActivityTracker {
   private readonly getPlayers: () => Promise<readonly ActivityPlayerSnapshot[]>
   private readonly intervalMs: number
   private readonly now: () => number
+  private readonly retentionDays?: number
   private readonly onError?: (error: unknown) => void
   private running = false
   private timeout: ReturnType<typeof setTimeout> | undefined
@@ -28,9 +30,13 @@ export class ActivityTracker {
   private lastSuccessfulPollTimestamp: number | null = null
   private lastFailedPollTimestamp: number | null = null
   private latestPollSucceeded: boolean | null = null
+  private lastPrunedAt: number | null = null
 
   constructor(options: ActivityTrackerOptions) {
-    if (!Number.isFinite(options.intervalMs ?? 15_000) || (options.intervalMs ?? 15_000) < 1) {
+    if (
+      !Number.isFinite(options.intervalMs ?? 15_000) ||
+      (options.intervalMs ?? 15_000) < 1
+    ) {
       throw new RangeError('intervalMs must be a positive number.')
     }
 
@@ -38,6 +44,17 @@ export class ActivityTracker {
     this.getPlayers = options.getPlayers
     this.intervalMs = Math.trunc(options.intervalMs ?? 15_000)
     this.now = options.now ?? Date.now
+    if (
+      options.retentionDays !== undefined &&
+      (!Number.isInteger(options.retentionDays) ||
+        options.retentionDays < 1 ||
+        options.retentionDays > 3_650)
+    ) {
+      throw new RangeError(
+        'retentionDays must be an integer from 1 through 3650.',
+      )
+    }
+    this.retentionDays = options.retentionDays
     this.onError = options.onError
   }
 
@@ -50,12 +67,14 @@ export class ActivityTracker {
       running: this.running,
       pollInFlight: this.inFlight !== undefined,
       dataStale: this.latestPollSucceeded === false,
-      lastSuccessfulPollAt: this.lastSuccessfulPollTimestamp === null
-        ? null
-        : new Date(this.lastSuccessfulPollTimestamp).toISOString(),
-      lastFailedPollAt: this.lastFailedPollTimestamp === null
-        ? null
-        : new Date(this.lastFailedPollTimestamp).toISOString(),
+      lastSuccessfulPollAt:
+        this.lastSuccessfulPollTimestamp === null
+          ? null
+          : new Date(this.lastSuccessfulPollTimestamp).toISOString(),
+      lastFailedPollAt:
+        this.lastFailedPollTimestamp === null
+          ? null
+          : new Date(this.lastFailedPollTimestamp).toISOString(),
     }
   }
 
@@ -96,6 +115,16 @@ export class ActivityTracker {
       if (this.running) {
         const observedAt = this.now()
         await this.repository.reconcilePlayers(players, observedAt)
+        if (
+          this.retentionDays &&
+          (this.lastPrunedAt === null ||
+            observedAt - this.lastPrunedAt >= 86_400_000)
+        ) {
+          await this.repository.pruneBefore(
+            observedAt - this.retentionDays * 86_400_000,
+          )
+          this.lastPrunedAt = observedAt
+        }
         this.lastSuccessfulPollTimestamp = observedAt
         this.latestPollSucceeded = true
       }

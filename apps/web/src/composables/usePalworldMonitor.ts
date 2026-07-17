@@ -8,9 +8,16 @@ import {
   type InjectionKey,
 } from 'vue'
 import { activityApi, ApiError, palworldApi, type ApiEndpoint } from '../api'
-import type { ActivitySummary, GameData, Player, ServerInfo, ServerMetrics } from '../types'
+import type {
+  ActivitySummary,
+  GameData,
+  Player,
+  ServerInfo,
+  ServerMetrics,
+} from '../types'
 
-export type ReadEndpoint = 'info' | 'metrics' | 'players' | 'settings' | 'game-data' | 'activity'
+export type ReadEndpoint =
+  'info' | 'metrics' | 'players' | 'settings' | 'game-data' | 'activity'
 
 export type Confirmation = {
   title: string
@@ -25,24 +32,40 @@ export type Toast = { id: number; message: string; kind: 'success' | 'error' }
 
 const GAME_DATA_REFRESH_MS = 60_000
 
+function storedPreference(name: string): string | null {
+  const key = `palharbor-${name}`
+  const current = localStorage.getItem(key)
+  if (current !== null) return current
+
+  const legacy = localStorage.getItem(`paldeck-${name}`)
+  if (legacy !== null) localStorage.setItem(key, legacy)
+  return legacy
+}
+
 export function createPalworldMonitor() {
-  const storedRefresh = Number(localStorage.getItem('paldeck-refresh') ?? 10)
-  const storedGameDataAuto = localStorage.getItem('paldeck-world-auto')
+  const storedRefresh = Number(storedPreference('refresh') ?? 10)
+  const storedGameDataAuto = storedPreference('world-auto')
   const info = ref<ServerInfo | null>(null)
   const metrics = ref<ServerMetrics | null>(null)
   const players = ref<Player[]>([])
   const settings = ref<Record<string, unknown> | null>(null)
   const gameData = ref<GameData | null>(null)
   const activitySummary = ref<ActivitySummary | null>(null)
-  const storedActivityDays = Number(localStorage.getItem('paldeck-activity-days') ?? 30)
-  const activityDays = ref([7, 14, 30, 90].includes(storedActivityDays) ? storedActivityDays : 30)
+  const storedActivityDays = Number(storedPreference('activity-days') ?? 30)
+  const activityDays = ref(
+    [7, 14, 30, 90].includes(storedActivityDays) ? storedActivityDays : 30,
+  )
   const errors = reactive<Partial<Record<ReadEndpoint, string>>>({})
   const loading = reactive(new Set<ReadEndpoint>())
   const lastFetched = reactive<Partial<Record<ReadEndpoint, number>>>({})
   const lastUpdated = ref<Date | null>(null)
-  const refreshSeconds = ref([0, 5, 10, 30, 60].includes(storedRefresh) ? storedRefresh : 10)
+  const refreshSeconds = ref(
+    [0, 5, 10, 30, 60].includes(storedRefresh) ? storedRefresh : 10,
+  )
   const pageVisible = ref(!document.hidden)
-  const gameDataAuto = ref(storedGameDataAuto === null ? true : storedGameDataAuto === 'true')
+  const gameDataAuto = ref(
+    storedGameDataAuto === null ? true : storedGameDataAuto === 'true',
+  )
   const worldViewActive = ref(false)
   const playerSearch = ref('')
   const actorSearch = ref('')
@@ -60,36 +83,70 @@ export function createPalworldMonitor() {
   let gameDataIntervalId: number | undefined
 
   const connected = computed(() => Boolean(info.value || metrics.value))
-  const coreLoading = computed(() => loading.has('info') && loading.has('metrics'))
-  const playerCount = computed(() => metrics.value?.currentplayernum ?? players.value.length)
+  const coreLoading = computed(
+    () => loading.has('info') && loading.has('metrics'),
+  )
+  const playerCount = computed(
+    () => metrics.value?.currentplayernum ?? players.value.length,
+  )
   const maxPlayers = computed(() => metrics.value?.maxplayernum ?? 0)
-  const playerCapacity = computed(() => maxPlayers.value
-    ? Math.min(100, Math.round(playerCount.value / maxPlayers.value * 100))
-    : 0)
-  const dominantError = computed(() => errors.info ?? errors.metrics ?? errors.players ?? null)
+  const playerCapacity = computed(() =>
+    maxPlayers.value
+      ? Math.min(100, Math.round((playerCount.value / maxPlayers.value) * 100))
+      : 0,
+  )
+  const dominantError = computed(
+    () => errors.info ?? errors.metrics ?? errors.players ?? null,
+  )
   const activityLoading = computed(() => loading.has('activity'))
-  const pollingActive = computed(() => refreshSeconds.value > 0 && pageVisible.value)
-  const lastUpdatedLabel = computed(() => lastUpdated.value
-    ? lastUpdated.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : 'Never')
-  const gameDataUpdatedLabel = computed(() => lastFetched['game-data']
-    ? new Date(lastFetched['game-data']).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : 'Never')
+  const pollingActive = computed(
+    () => refreshSeconds.value > 0 && pageVisible.value,
+  )
+  const lastUpdatedLabel = computed(() =>
+    lastUpdated.value
+      ? lastUpdated.value.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : 'Never',
+  )
+  const gameDataUpdatedLabel = computed(() =>
+    lastFetched['game-data']
+      ? new Date(lastFetched['game-data']).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : 'Never',
+  )
 
   const filteredPlayers = computed(() => {
     const query = playerSearch.value.trim().toLowerCase()
     if (!query) return players.value
-    return players.value.filter((player) => [player.name, player.accountName, player.userId, player.ip]
-      .some((value) => String(value ?? '').toLowerCase().includes(query)))
+    return players.value.filter((player) =>
+      [player.name, player.accountName, player.userId, player.ip].some(
+        (value) =>
+          String(value ?? '')
+            .toLowerCase()
+            .includes(query),
+      ),
+    )
   })
 
-  const actorData = computed(() => Array.isArray(gameData.value?.ActorData) ? gameData.value.ActorData : [])
+  const actorData = computed(() =>
+    Array.isArray(gameData.value?.ActorData) ? gameData.value.ActorData : [],
+  )
   const filteredActors = computed(() => {
     const query = actorSearch.value.trim().toLowerCase()
     if (!query) return actorData.value
-    return actorData.value.filter((actor) => Object.values(actor).some((value) =>
-      String(value ?? '').toLowerCase().includes(query),
-    ))
+    return actorData.value.filter((actor) =>
+      Object.values(actor).some((value) =>
+        String(value ?? '')
+          .toLowerCase()
+          .includes(query),
+      ),
+    )
   })
 
   const actorGroups = computed(() => {
@@ -104,15 +161,20 @@ export function createPalworldMonitor() {
   const filteredSettings = computed(() => {
     const query = settingsSearch.value.trim().toLowerCase()
     return Object.entries(settings.value ?? {})
-      .filter(([key, value]) => !query || `${key} ${String(value)}`.toLowerCase().includes(query))
+      .filter(
+        ([key, value]) =>
+          !query || `${key} ${String(value)}`.toLowerCase().includes(query),
+      )
       .sort(([a], [b]) => a.localeCompare(b))
   })
 
   function setData(endpoint: ReadEndpoint, data: unknown) {
     if (endpoint === 'info') info.value = data as ServerInfo
     if (endpoint === 'metrics') metrics.value = data as ServerMetrics
-    if (endpoint === 'players') players.value = (data as { players?: Player[] }).players ?? []
-    if (endpoint === 'settings') settings.value = data as Record<string, unknown>
+    if (endpoint === 'players')
+      players.value = (data as { players?: Player[] }).players ?? []
+    if (endpoint === 'settings')
+      settings.value = data as Record<string, unknown>
     if (endpoint === 'game-data') gameData.value = data as GameData
     if (endpoint === 'activity') activitySummary.value = data as ActivitySummary
   }
@@ -120,21 +182,23 @@ export function createPalworldMonitor() {
   async function refresh(endpoint: ReadEndpoint) {
     if (loading.has(endpoint)) return
     const requestedActivityDays = activityDays.value
-    let repeatActivityRefresh = false
     loading.add(endpoint)
     try {
-      const data = endpoint === 'activity'
-        ? await activityApi<ActivitySummary>(requestedActivityDays)
-        : await palworldApi<unknown>(endpoint)
+      const data =
+        endpoint === 'activity'
+          ? await activityApi<ActivitySummary>(requestedActivityDays)
+          : await palworldApi<unknown>(endpoint)
       setData(endpoint, data)
       delete errors[endpoint]
       lastFetched[endpoint] = Date.now()
       lastUpdated.value = new Date()
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
-      errors[endpoint] = error instanceof Error ? error.message : 'The request failed.'
+      errors[endpoint] =
+        error instanceof Error ? error.message : 'The request failed.'
     } finally {
-      repeatActivityRefresh = endpoint === 'activity' && requestedActivityDays !== activityDays.value
+      const repeatActivityRefresh =
+        endpoint === 'activity' && requestedActivityDays !== activityDays.value
       loading.delete(endpoint)
       if (repeatActivityRefresh) void refresh('activity')
     }
@@ -143,7 +207,9 @@ export function createPalworldMonitor() {
   async function refreshCore(force = false) {
     const now = Date.now()
     const stale = (endpoint: ReadEndpoint, afterMs: number) =>
-      force || !lastFetched[endpoint] || now - (lastFetched[endpoint] ?? 0) >= afterMs
+      force ||
+      !lastFetched[endpoint] ||
+      now - (lastFetched[endpoint] ?? 0) >= afterMs
     const requests = [refresh('metrics'), refresh('players')]
     if (stale('activity', 30_000)) requests.push(refresh('activity'))
     if (stale('info', 60_000)) requests.push(refresh('info'))
@@ -154,9 +220,12 @@ export function createPalworldMonitor() {
   function configurePolling() {
     if (intervalId) window.clearInterval(intervalId)
     intervalId = undefined
-    localStorage.setItem('paldeck-refresh', String(refreshSeconds.value))
+    localStorage.setItem('palharbor-refresh', String(refreshSeconds.value))
     if (pollingActive.value) {
-      intervalId = window.setInterval(() => void refreshCore(false), refreshSeconds.value * 1000)
+      intervalId = window.setInterval(
+        () => void refreshCore(false),
+        refreshSeconds.value * 1000,
+      )
     }
   }
 
@@ -164,7 +233,10 @@ export function createPalworldMonitor() {
     if (gameDataIntervalId) window.clearInterval(gameDataIntervalId)
     gameDataIntervalId = undefined
     if (gameDataAuto.value && worldViewActive.value && pageVisible.value) {
-      gameDataIntervalId = window.setInterval(() => void refresh('game-data'), GAME_DATA_REFRESH_MS)
+      gameDataIntervalId = window.setInterval(
+        () => void refresh('game-data'),
+        GAME_DATA_REFRESH_MS,
+      )
     }
   }
 
@@ -175,9 +247,10 @@ export function createPalworldMonitor() {
 
   function setGameDataAuto(value: boolean) {
     gameDataAuto.value = value
-    localStorage.setItem('paldeck-world-auto', String(value))
+    localStorage.setItem('palharbor-world-auto', String(value))
     configureGameDataPolling()
-    if (value && worldViewActive.value && pageVisible.value) void refresh('game-data')
+    if (value && worldViewActive.value && pageVisible.value)
+      void refresh('game-data')
   }
 
   function activateWorldView() {
@@ -193,7 +266,7 @@ export function createPalworldMonitor() {
 
   function setActivityDays(value: number) {
     activityDays.value = [7, 14, 30, 90].includes(value) ? value : 30
-    localStorage.setItem('paldeck-activity-days', String(activityDays.value))
+    localStorage.setItem('palharbor-activity-days', String(activityDays.value))
     void refresh('activity')
   }
 
@@ -221,12 +294,16 @@ export function createPalworldMonitor() {
 
   function formatNumber(value: unknown, digits = 0) {
     const number = Number(value)
-    return Number.isFinite(number) ? number.toLocaleString(undefined, { maximumFractionDigits: digits }) : '—'
+    return Number.isFinite(number)
+      ? number.toLocaleString(undefined, { maximumFractionDigits: digits })
+      : '—'
   }
 
   function shortId(value?: string) {
     if (!value) return '—'
-    return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-5)}` : value
+    return value.length > 18
+      ? `${value.slice(0, 10)}…${value.slice(-5)}`
+      : value
   }
 
   function settingLabel(key: string) {
@@ -244,7 +321,11 @@ export function createPalworldMonitor() {
     }, 4_500)
   }
 
-  async function runAction(endpoint: ApiEndpoint, body: Record<string, unknown> | undefined, success: string) {
+  async function runAction(
+    endpoint: ApiEndpoint,
+    body: Record<string, unknown> | undefined,
+    success: string,
+  ) {
     actionBusy.value = true
     try {
       await palworldApi(endpoint, { method: 'POST', body })
@@ -253,7 +334,10 @@ export function createPalworldMonitor() {
       if (endpoint === 'announce') announceMessage.value = ''
       if (endpoint === 'unban') unbanUserId.value = ''
     } catch (error) {
-      toast(error instanceof ApiError ? error.message : 'The command failed.', 'error')
+      toast(
+        error instanceof ApiError ? error.message : 'The command failed.',
+        'error',
+      )
       throw error
     } finally {
       actionBusy.value = false
@@ -267,7 +351,11 @@ export function createPalworldMonitor() {
 
   async function confirmAction() {
     const pending = confirmation.value
-    if (!pending || (pending.phrase && confirmationInput.value !== pending.phrase)) return
+    if (
+      !pending ||
+      (pending.phrase && confirmationInput.value !== pending.phrase)
+    )
+      return
     try {
       await pending.run()
       confirmation.value = null
@@ -279,7 +367,11 @@ export function createPalworldMonitor() {
   function announce() {
     const message = announceMessage.value.trim()
     if (!message) return
-    void runAction('announce', { message }, 'Announcement broadcast to the server.')
+    void runAction(
+      'announce',
+      { message },
+      'Announcement broadcast to the server.',
+    )
   }
 
   function kickPlayer(player: Player) {
@@ -287,7 +379,12 @@ export function createPalworldMonitor() {
       title: `Kick ${player.name || player.accountName}?`,
       detail: 'They will be disconnected now, but can join the server again.',
       label: 'Kick player',
-      run: () => runAction('kick', { userid: player.userId, message: 'Removed by server admin.' }, `${player.name} was kicked.`),
+      run: () =>
+        runAction(
+          'kick',
+          { userid: player.userId, message: 'Removed by server admin.' },
+          `${player.name} was kicked.`,
+        ),
     })
   }
 
@@ -298,7 +395,12 @@ export function createPalworldMonitor() {
       label: 'Ban player',
       phrase: 'BAN',
       danger: true,
-      run: () => runAction('ban', { userid: player.userId, message: 'Banned by server admin.' }, `${player.name} was banned.`),
+      run: () =>
+        runAction(
+          'ban',
+          { userid: player.userId, message: 'Banned by server admin.' },
+          `${player.name} was banned.`,
+        ),
     })
   }
 
@@ -330,17 +432,25 @@ export function createPalworldMonitor() {
       label: 'Schedule shutdown',
       phrase: 'SHUTDOWN',
       danger: true,
-      run: () => runAction('shutdown', {
-        waittime,
-        ...(shutdownMessage.value.trim() ? { message: shutdownMessage.value.trim() } : {}),
-      }, 'Server shutdown scheduled.'),
+      run: () =>
+        runAction(
+          'shutdown',
+          {
+            waittime,
+            ...(shutdownMessage.value.trim()
+              ? { message: shutdownMessage.value.trim() }
+              : {}),
+          },
+          'Server shutdown scheduled.',
+        ),
     })
   }
 
   function forceStop() {
     ask({
       title: 'Force-stop the server?',
-      detail: 'This immediately stops the process and may lose unsaved progress. Type FORCE STOP to confirm.',
+      detail:
+        'This immediately stops the process and may lose unsaved progress. Type FORCE STOP to confirm.',
       label: 'Force stop',
       phrase: 'FORCE STOP',
       danger: true,
@@ -362,26 +472,75 @@ export function createPalworldMonitor() {
   })
 
   return {
-    info, metrics, players, settings, gameData, activitySummary, activityDays, errors, loading, lastUpdated,
-    refreshSeconds, pageVisible, gameDataAuto, playerSearch, actorSearch, settingsSearch,
-    announceMessage, unbanUserId, shutdownWait, shutdownMessage, actionBusy,
-    confirmation, confirmationInput, toasts, connected, coreLoading, playerCount,
-    maxPlayers, playerCapacity, dominantError, activityLoading, pollingActive, lastUpdatedLabel,
+    info,
+    metrics,
+    players,
+    settings,
+    gameData,
+    activitySummary,
+    activityDays,
+    errors,
+    loading,
+    lastUpdated,
+    refreshSeconds,
+    pageVisible,
+    gameDataAuto,
+    playerSearch,
+    actorSearch,
+    settingsSearch,
+    announceMessage,
+    unbanUserId,
+    shutdownWait,
+    shutdownMessage,
+    actionBusy,
+    confirmation,
+    confirmationInput,
+    toasts,
+    connected,
+    coreLoading,
+    playerCount,
+    maxPlayers,
+    playerCapacity,
+    dominantError,
+    activityLoading,
+    pollingActive,
+    lastUpdatedLabel,
     gameDataUpdatedLabel,
-    filteredPlayers, actorData, filteredActors, actorGroups, filteredSettings,
-    refresh, refreshCore, setRefresh, setGameDataAuto, activateWorldView, deactivateWorldView,
-    setActivityDays, formatDuration, formatNumber, shortId, settingLabel,
-    confirmAction, announce, kickPlayer, banPlayer, unbanPlayer, saveWorld,
-    scheduleShutdown, forceStop,
+    filteredPlayers,
+    actorData,
+    filteredActors,
+    actorGroups,
+    filteredSettings,
+    refresh,
+    refreshCore,
+    setRefresh,
+    setGameDataAuto,
+    activateWorldView,
+    deactivateWorldView,
+    setActivityDays,
+    formatDuration,
+    formatNumber,
+    shortId,
+    settingLabel,
+    confirmAction,
+    announce,
+    kickPlayer,
+    banPlayer,
+    unbanPlayer,
+    saveWorld,
+    scheduleShutdown,
+    forceStop,
   }
 }
 
 export type PalworldMonitor = ReturnType<typeof createPalworldMonitor>
 
-export const palworldMonitorKey: InjectionKey<PalworldMonitor> = Symbol('palworld-monitor')
+export const palworldMonitorKey: InjectionKey<PalworldMonitor> =
+  Symbol('palworld-monitor')
 
 export function usePalworldMonitor() {
   const monitor = inject(palworldMonitorKey)
-  if (!monitor) throw new Error('Palworld monitor is only available inside AppShell.')
+  if (!monitor)
+    throw new Error('Palworld monitor is only available inside AppShell.')
   return monitor
 }

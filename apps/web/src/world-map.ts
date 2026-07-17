@@ -23,7 +23,6 @@ export type LeafletCoordinate = {
 export type MapRegionId = 'palpagos' | 'world-tree' | 'caves'
 
 export type TerrainTileSet = {
-  pathTemplate: string
   tileSize: number
   minSourceZoom: number
   maxSourceZoom: number
@@ -32,7 +31,6 @@ export type TerrainTileSet = {
 export type MapRegionMetadata = {
   id: MapRegionId
   label: string
-  terrainFile: string | null
   terrainTiles: TerrainTileSet | null
   worldBounds: CoordinateBounds
   mapBounds: CoordinateBounds
@@ -79,9 +77,7 @@ export const MAP_REGIONS = {
   palpagos: {
     id: 'palpagos',
     label: 'Palpagos Islands',
-    terrainFile: 'palpagos.webp',
     terrainTiles: {
-      pathTemplate: 'tiles/palpagos/{z}/{x}/{y}.webp',
       tileSize: 512,
       minSourceZoom: 0,
       maxSourceZoom: 4,
@@ -93,9 +89,7 @@ export const MAP_REGIONS = {
   'world-tree': {
     id: 'world-tree',
     label: 'World Tree',
-    terrainFile: 'world-tree.webp',
     terrainTiles: {
-      pathTemplate: 'tiles/world-tree/{z}/{x}/{y}.webp',
       tileSize: 512,
       minSourceZoom: 0,
       maxSourceZoom: 4,
@@ -107,7 +101,6 @@ export const MAP_REGIONS = {
   caves: {
     id: 'caves',
     label: 'Caves & Instances',
-    terrainFile: null,
     terrainTiles: null,
     worldBounds: CAVE_LOCATION_BOUNDS,
     mapBounds: FLAT_MAP_BOUNDS,
@@ -126,14 +119,21 @@ function surfaceLocationToMap(
   }
 }
 
-function surfaceMapToLocation(bounds: CoordinateBounds, mapX: number, mapY: number): WorldLocation {
+function surfaceMapToLocation(
+  bounds: CoordinateBounds,
+  mapX: number,
+  mapY: number,
+): WorldLocation {
   return {
     locationX: bounds.minX + (mapY / MAP_SIZE) * (bounds.maxX - bounds.minX),
     locationY: bounds.minY + (mapX / MAP_SIZE) * (bounds.maxY - bounds.minY),
   }
 }
 
-function palpagosLocationToMap(locationX: number, locationY: number): FlatMapPoint {
+function palpagosLocationToMap(
+  locationX: number,
+  locationY: number,
+): FlatMapPoint {
   return surfaceLocationToMap(WORLD_LOCATION_BOUNDS, locationX, locationY)
 }
 
@@ -141,7 +141,10 @@ function palpagosMapToLocation(mapX: number, mapY: number): WorldLocation {
   return surfaceMapToLocation(WORLD_LOCATION_BOUNDS, mapX, mapY)
 }
 
-function worldTreeLocationToMap(locationX: number, locationY: number): FlatMapPoint {
+function worldTreeLocationToMap(
+  locationX: number,
+  locationY: number,
+): FlatMapPoint {
   return surfaceLocationToMap(WORLD_TREE_LOCATION_BOUNDS, locationX, locationY)
 }
 
@@ -160,7 +163,8 @@ function caveLocationToMap(locationX: number, locationY: number): FlatMapPoint {
 function caveMapToLocation(mapX: number, mapY: number): WorldLocation {
   const span = CAVE_LOCATION_BOUNDS.maxX - CAVE_LOCATION_BOUNDS.minX
   return {
-    locationX: CAVE_LOCATION_BOUNDS.minX + ((MAP_SIZE - mapY) / MAP_SIZE) * span,
+    locationX:
+      CAVE_LOCATION_BOUNDS.minX + ((MAP_SIZE - mapY) / MAP_SIZE) * span,
     locationY: CAVE_LOCATION_BOUNDS.minY + (mapX / MAP_SIZE) * span,
   }
 }
@@ -171,17 +175,27 @@ export function locationToRegionMap(
   locationY: number,
 ): FlatMapPoint {
   switch (region) {
-    case 'world-tree': return worldTreeLocationToMap(locationX, locationY)
-    case 'caves': return caveLocationToMap(locationX, locationY)
-    case 'palpagos': return palpagosLocationToMap(locationX, locationY)
+    case 'world-tree':
+      return worldTreeLocationToMap(locationX, locationY)
+    case 'caves':
+      return caveLocationToMap(locationX, locationY)
+    case 'palpagos':
+      return palpagosLocationToMap(locationX, locationY)
   }
 }
 
-export function regionMapToLocation(region: MapRegionId, mapX: number, mapY: number): WorldLocation {
+export function regionMapToLocation(
+  region: MapRegionId,
+  mapX: number,
+  mapY: number,
+): WorldLocation {
   switch (region) {
-    case 'world-tree': return worldTreeMapToLocation(mapX, mapY)
-    case 'caves': return caveMapToLocation(mapX, mapY)
-    case 'palpagos': return palpagosMapToLocation(mapX, mapY)
+    case 'world-tree':
+      return worldTreeMapToLocation(mapX, mapY)
+    case 'caves':
+      return caveMapToLocation(mapX, mapY)
+    case 'palpagos':
+      return palpagosMapToLocation(mapX, mapY)
   }
 }
 
@@ -200,18 +214,25 @@ export function isLocationInRegionBounds(
   locationY: number,
 ): boolean {
   const bounds = MAP_REGIONS[region].worldBounds
-  return Number.isFinite(locationX)
-    && Number.isFinite(locationY)
-    && locationX >= bounds.minX
-    && locationX <= bounds.maxX
-    && locationY >= bounds.minY
-    && locationY <= bounds.maxY
+  return (
+    Number.isFinite(locationX) &&
+    Number.isFinite(locationY) &&
+    locationX >= bounds.minX &&
+    locationX <= bounds.maxX &&
+    locationY >= bounds.minY &&
+    locationY <= bounds.maxY
+  )
 }
 
 /** Resolve overlapping surface bounds using Palworld's WorldMapPriority (Tree before MainMap). */
-export function mapRegionForLocation(locationX: number, locationY: number): MapRegionId | null {
-  if (isLocationInRegionBounds('world-tree', locationX, locationY)) return 'world-tree'
-  if (isLocationInRegionBounds('palpagos', locationX, locationY)) return 'palpagos'
+export function mapRegionForLocation(
+  locationX: number,
+  locationY: number,
+): MapRegionId | null {
+  if (isLocationInRegionBounds('world-tree', locationX, locationY))
+    return 'world-tree'
+  if (isLocationInRegionBounds('palpagos', locationX, locationY))
+    return 'palpagos'
   return null
 }
 
@@ -227,7 +248,9 @@ export function mapRegionForActor(
 ): MapRegionId | null {
   const normalizedStage = typeof stage === 'string' ? stage.trim() : ''
   if (normalizedStage && normalizedStage.toLowerCase() !== 'none') {
-    return isLocationInRegionBounds('caves', locationX, locationY) ? 'caves' : null
+    return isLocationInRegionBounds('caves', locationX, locationY)
+      ? 'caves'
+      : null
   }
   return mapRegionForLocation(locationX, locationY)
 }
@@ -239,7 +262,10 @@ export function mapRegionForActor(
  * Leaflet as latitude. The map's shifted CRS places y=MAP_SIZE at the top of
  * the image and y=0 at the bottom while keeping tile coordinates top-down.
  */
-export function locationToMap(locationX: number, locationY: number): FlatMapPoint {
+export function locationToMap(
+  locationX: number,
+  locationY: number,
+): FlatMapPoint {
   return locationToRegionMap('palpagos', locationX, locationY)
 }
 
@@ -248,11 +274,17 @@ export function mapToLocation(mapX: number, mapY: number): WorldLocation {
   return regionMapToLocation('palpagos', mapX, mapY)
 }
 
-export function locationToLeaflet(locationX: number, locationY: number): LeafletCoordinate {
+export function locationToLeaflet(
+  locationX: number,
+  locationY: number,
+): LeafletCoordinate {
   return locationToRegionLeaflet('palpagos', locationX, locationY)
 }
 
-export function locationToUv(locationX: number, locationY: number): { u: number; v: number } {
+export function locationToUv(
+  locationX: number,
+  locationY: number,
+): { u: number; v: number } {
   const point = locationToMap(locationX, locationY)
   return {
     u: point.x / MAP_SIZE,
@@ -260,15 +292,20 @@ export function locationToUv(locationX: number, locationY: number): { u: number;
   }
 }
 
-export function isLocationInWorldBounds(locationX: number, locationY: number): boolean {
+export function isLocationInWorldBounds(
+  locationX: number,
+  locationY: number,
+): boolean {
   return isLocationInRegionBounds('palpagos', locationX, locationY)
 }
 
 export function isMapPointInBounds(mapX: number, mapY: number): boolean {
-  return Number.isFinite(mapX)
-    && Number.isFinite(mapY)
-    && mapX >= FLAT_MAP_BOUNDS.minX
-    && mapX <= FLAT_MAP_BOUNDS.maxX
-    && mapY >= FLAT_MAP_BOUNDS.minY
-    && mapY <= FLAT_MAP_BOUNDS.maxY
+  return (
+    Number.isFinite(mapX) &&
+    Number.isFinite(mapY) &&
+    mapX >= FLAT_MAP_BOUNDS.minX &&
+    mapX <= FLAT_MAP_BOUNDS.maxX &&
+    mapY >= FLAT_MAP_BOUNDS.minY &&
+    mapY <= FLAT_MAP_BOUNDS.maxY
+  )
 }

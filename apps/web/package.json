@@ -1,30 +1,34 @@
 {
-  "name": "@paldeck/web",
+  "name": "@app/web",
   "private": true,
+  "author": "Jordan Vohwinkel",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "test": "vitest run src",
+    "test:coverage": "vitest run src --coverage",
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
-    "@fontsource/barlow-condensed": "latest",
-    "@fontsource/dm-sans": "latest",
-    "@lucide/vue": "latest",
+    "@fontsource/barlow-condensed": "5.2.8",
+    "@fontsource/dm-sans": "5.2.8",
+    "@lucide/vue": "1.24.0",
     "leaflet": "1.9.4",
-    "vue": "latest",
-    "vue-router": "latest"
+    "vue": "3.5.39",
+    "vue-router": "5.1.0"
   },
   "devDependencies": {
-    "@tsconfig/node22": "latest",
+    "@tsconfig/node22": "22.0.5",
     "@types/leaflet": "1.9.21",
-    "@types/node": "latest",
-    "@vitejs/plugin-vue": "latest",
-    "@vue/tsconfig": "latest",
-    "typescript": "^5.9.3",
-    "vite": "latest",
-    "vitest": "latest",
-    "vue-tsc": "latest"
+    "@types/node": "26.1.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "@vitejs/plugin-vue": "6.0.7",
+    "@vue/tsconfig": "0.9.1",
+    "typescript": "5.9.3",
+    "vite": "8.1.4",
+    "vitest": "4.1.10",
+    "vue-tsc": "3.3.7"
   }
 }

@@ -22,8 +22,12 @@ import {
 
 describe('Palworld map texture calibration', () => {
   it('places current Palpagos bounds and known landmarks on the 1.0 texture', () => {
-    expect(locationToUv(WORLD_LOCATION_BOUNDS.minX, WORLD_LOCATION_BOUNDS.minY)).toEqual({ u: 0, v: 1 })
-    expect(locationToUv(WORLD_LOCATION_BOUNDS.maxX, WORLD_LOCATION_BOUNDS.maxY)).toEqual({ u: 1, v: 0 })
+    expect(
+      locationToUv(WORLD_LOCATION_BOUNDS.minX, WORLD_LOCATION_BOUNDS.minY),
+    ).toEqual({ u: 0, v: 1 })
+    expect(
+      locationToUv(WORLD_LOCATION_BOUNDS.maxX, WORLD_LOCATION_BOUNDS.maxY),
+    ).toEqual({ u: 1, v: 0 })
 
     const summerBeach = locationToUv(-383_183.16, -210_790.92)
     expect(summerBeach.u).toBeCloseTo(0.354507, 5)
@@ -58,13 +62,29 @@ describe('Palworld map texture calibration', () => {
   })
 
   it('reports calibrated Palpagos and image bounds without clamping actors', () => {
-    expect(isLocationInWorldBounds(WORLD_LOCATION_BOUNDS.minX, WORLD_LOCATION_BOUNDS.minY)).toBe(true)
-    expect(isLocationInWorldBounds(WORLD_LOCATION_BOUNDS.maxX, WORLD_LOCATION_BOUNDS.maxY)).toBe(true)
-    expect(isLocationInWorldBounds(WORLD_LOCATION_BOUNDS.maxX + 1, 0)).toBe(false)
+    expect(
+      isLocationInWorldBounds(
+        WORLD_LOCATION_BOUNDS.minX,
+        WORLD_LOCATION_BOUNDS.minY,
+      ),
+    ).toBe(true)
+    expect(
+      isLocationInWorldBounds(
+        WORLD_LOCATION_BOUNDS.maxX,
+        WORLD_LOCATION_BOUNDS.maxY,
+      ),
+    ).toBe(true)
+    expect(isLocationInWorldBounds(WORLD_LOCATION_BOUNDS.maxX + 1, 0)).toBe(
+      false,
+    )
     expect(isLocationInWorldBounds(Number.NaN, 0)).toBe(false)
 
-    expect(isMapPointInBounds(FLAT_MAP_BOUNDS.minX, FLAT_MAP_BOUNDS.maxY)).toBe(true)
-    expect(isMapPointInBounds(FLAT_MAP_BOUNDS.maxX, FLAT_MAP_BOUNDS.minY)).toBe(true)
+    expect(isMapPointInBounds(FLAT_MAP_BOUNDS.minX, FLAT_MAP_BOUNDS.maxY)).toBe(
+      true,
+    )
+    expect(isMapPointInBounds(FLAT_MAP_BOUNDS.maxX, FLAT_MAP_BOUNDS.minY)).toBe(
+      true,
+    )
     expect(isMapPointInBounds(-0.001, 0)).toBe(false)
     expect(isMapPointInBounds(Number.POSITIVE_INFINITY, 0)).toBe(false)
   })
@@ -75,9 +95,7 @@ describe('region-aware Palworld map calibration', () => {
     expect(MAP_REGIONS.palpagos).toMatchObject({
       id: 'palpagos',
       label: 'Palpagos Islands',
-      terrainFile: 'palpagos.webp',
       terrainTiles: {
-        pathTemplate: 'tiles/palpagos/{z}/{x}/{y}.webp',
         tileSize: 512,
         minSourceZoom: 0,
         maxSourceZoom: 4,
@@ -89,9 +107,7 @@ describe('region-aware Palworld map calibration', () => {
     expect(MAP_REGIONS['world-tree']).toMatchObject({
       id: 'world-tree',
       label: 'World Tree',
-      terrainFile: 'world-tree.webp',
       terrainTiles: {
-        pathTemplate: 'tiles/world-tree/{z}/{x}/{y}.webp',
         tileSize: 512,
         minSourceZoom: 0,
         maxSourceZoom: 4,
@@ -103,7 +119,6 @@ describe('region-aware Palworld map calibration', () => {
     expect(MAP_REGIONS.caves).toMatchObject({
       id: 'caves',
       label: 'Caves & Instances',
-      terrainFile: null,
       terrainTiles: null,
       worldBounds: CAVE_LOCATION_BOUNDS,
       mapBounds: FLAT_MAP_BOUNDS,
@@ -117,7 +132,10 @@ describe('region-aware Palworld map calibration', () => {
       { location: [minX, minY] as const, expected: [0, 0] as const },
       { location: [minX, maxY] as const, expected: [MAP_SIZE, 0] as const },
       { location: [maxX, minY] as const, expected: [0, MAP_SIZE] as const },
-      { location: [maxX, maxY] as const, expected: [MAP_SIZE, MAP_SIZE] as const },
+      {
+        location: [maxX, maxY] as const,
+        expected: [MAP_SIZE, MAP_SIZE] as const,
+      },
     ]
 
     for (const { location, expected } of corners) {
@@ -129,7 +147,11 @@ describe('region-aware Palworld map calibration', () => {
 
   it('reverses the World Tree affine transform without Palpagos quantization', () => {
     const location = { locationX: 531_204.25, locationY: -612_488.75 }
-    const point = locationToRegionMap('world-tree', location.locationX, location.locationY)
+    const point = locationToRegionMap(
+      'world-tree',
+      location.locationX,
+      location.locationY,
+    )
     const roundTrip = regionMapToLocation('world-tree', point.x, point.y)
 
     expect(roundTrip.locationX).toBeCloseTo(location.locationX, 8)
@@ -140,7 +162,10 @@ describe('region-aware Palworld map calibration', () => {
     const { minX, maxX, minY, maxY } = CAVE_LOCATION_BOUNDS
     const corners = [
       { location: [minX, minY] as const, expected: [0, MAP_SIZE] as const },
-      { location: [minX, maxY] as const, expected: [MAP_SIZE, MAP_SIZE] as const },
+      {
+        location: [minX, maxY] as const,
+        expected: [MAP_SIZE, MAP_SIZE] as const,
+      },
       { location: [maxX, minY] as const, expected: [0, 0] as const },
       { location: [maxX, maxY] as const, expected: [MAP_SIZE, 0] as const },
     ]
@@ -153,17 +178,31 @@ describe('region-aware Palworld map calibration', () => {
     }
 
     const location = { locationX: -2_345.67, locationY: 8_765.43 }
-    const point = locationToRegionMap('caves', location.locationX, location.locationY)
+    const point = locationToRegionMap(
+      'caves',
+      location.locationX,
+      location.locationY,
+    )
     expect(regionMapToLocation('caves', point.x, point.y)).toEqual(location)
   })
 
   it('checks locations against the selected region rather than global bounds', () => {
     const tree = WORLD_TREE_LOCATION_BOUNDS
-    expect(isLocationInRegionBounds('world-tree', tree.minX, tree.minY)).toBe(true)
-    expect(isLocationInRegionBounds('world-tree', tree.maxX, tree.maxY)).toBe(true)
-    expect(isLocationInRegionBounds('world-tree', tree.minX - 1, tree.minY)).toBe(false)
-    expect(isLocationInRegionBounds('world-tree', tree.maxX, tree.maxY + 1)).toBe(false)
-    expect(isLocationInRegionBounds('world-tree', Number.NaN, tree.minY)).toBe(false)
+    expect(isLocationInRegionBounds('world-tree', tree.minX, tree.minY)).toBe(
+      true,
+    )
+    expect(isLocationInRegionBounds('world-tree', tree.maxX, tree.maxY)).toBe(
+      true,
+    )
+    expect(
+      isLocationInRegionBounds('world-tree', tree.minX - 1, tree.minY),
+    ).toBe(false)
+    expect(
+      isLocationInRegionBounds('world-tree', tree.maxX, tree.maxY + 1),
+    ).toBe(false)
+    expect(isLocationInRegionBounds('world-tree', Number.NaN, tree.minY)).toBe(
+      false,
+    )
 
     // This location belongs to the World Tree plane but not Palpagos.
     expect(isLocationInRegionBounds('world-tree', 500_000, -600_000)).toBe(true)
@@ -184,16 +223,32 @@ describe('region-aware Palworld map calibration', () => {
     expect(mapRegionForActor(0, 0, 'None')).toBe('palpagos')
     expect(mapRegionForActor(0, 0, '  none  ')).toBe('palpagos')
     expect(mapRegionForActor(0, 0, '6E342CCB4D5A')).toBe('caves')
-    expect(mapRegionForActor(CAVE_LOCATION_BOUNDS.maxX + 1, 0, 'DungeonInstance')).toBeNull()
+    expect(
+      mapRegionForActor(CAVE_LOCATION_BOUNDS.maxX + 1, 0, 'DungeonInstance'),
+    ).toBeNull()
     expect(mapRegionForActor(500_000, -600_000, 'None')).toBe('world-tree')
   })
 
   it('keeps legacy helpers as Palpagos wrappers and exposes region-specific Leaflet points', () => {
     const palpagosLocation = { locationX: -257_951.39, locationY: 151_247.84 }
-    expect(locationToRegionMap('palpagos', palpagosLocation.locationX, palpagosLocation.locationY))
-      .toEqual(locationToMap(palpagosLocation.locationX, palpagosLocation.locationY))
-    expect(locationToRegionLeaflet('palpagos', palpagosLocation.locationX, palpagosLocation.locationY))
-      .toEqual(locationToLeaflet(palpagosLocation.locationX, palpagosLocation.locationY))
+    expect(
+      locationToRegionMap(
+        'palpagos',
+        palpagosLocation.locationX,
+        palpagosLocation.locationY,
+      ),
+    ).toEqual(
+      locationToMap(palpagosLocation.locationX, palpagosLocation.locationY),
+    )
+    expect(
+      locationToRegionLeaflet(
+        'palpagos',
+        palpagosLocation.locationX,
+        palpagosLocation.locationY,
+      ),
+    ).toEqual(
+      locationToLeaflet(palpagosLocation.locationX, palpagosLocation.locationY),
+    )
 
     const treePoint = locationToRegionMap('world-tree', 500_000, -600_000)
     expect(locationToRegionLeaflet('world-tree', 500_000, -600_000)).toEqual({

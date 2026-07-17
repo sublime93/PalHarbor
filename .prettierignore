@@ -1,0 +1,12 @@
+**/.vitepress/cache/
+**/.vitepress/dist/
+**/coverage/
+**/data/
+**/dist/
+**/generated/
+**/node_modules/
+**/prisma/.generated/
+apps/web/public/maps/
+playwright-report/
+test-results/
+pnpm-lock.yaml

@@ -1,17 +1,39 @@
 {
-  "name": "pal-monitor-workspace",
+  "name": "palharbor-workspace",
   "private": true,
-  "packageManager": "pnpm@10.3.0",
+  "type": "module",
+  "author": "Jordan Vohwinkel",
+  "license": "MIT",
+  "packageManager": "pnpm@11.4.0",
   "scripts": {
-    "dev": "concurrently -k -n gateway,web -c yellow,cyan \"pnpm --filter @paldeck/api dev\" \"pnpm --filter @paldeck/web dev\"",
+    "dev": "concurrently -k -n gateway,web -c yellow,cyan \"pnpm --filter @app/api dev\" \"pnpm --filter @app/web dev\"",
+    "docs:dev": "pnpm --filter @app/docs dev",
+    "docs:build": "pnpm --filter @app/docs build",
+    "docs:preview": "pnpm --filter @app/docs preview",
+    "maps:sync": "pnpm --filter @app/api maps:sync",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
+    "test:coverage": "pnpm -r --if-present test:coverage",
+    "test:e2e": "playwright test",
     "typecheck": "pnpm -r --if-present typecheck",
-    "db:generate": "pnpm --filter @paldeck/database generate",
-    "db:push": "pnpm --filter @paldeck/database db:push",
-    "start": "pnpm --filter @paldeck/api start"
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:coverage && pnpm build",
+    "db:generate": "pnpm --filter @app/database generate",
+    "db:push": "pnpm --filter @app/database db:push",
+    "start": "pnpm --filter @app/api start"
   },
   "devDependencies": {
-    "concurrently": "latest"
+    "@axe-core/playwright": "4.12.1",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.61.1",
+    "concurrently": "10.0.3",
+    "eslint": "10.7.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-vue": "10.9.2",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "typescript-eslint": "8.64.0"
   }
 }

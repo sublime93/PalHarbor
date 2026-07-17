@@ -1,3 +1,19 @@
 packages:
   - apps/*
   - packages/*
+
+injectWorkspacePackages: true
+syncInjectedDepsAfterScripts:
+  - build
+
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sharp: true
+
+minimumReleaseAge: 1440
+
+overrides:
+  '@hono/node-server': 1.19.13
+  js-base64: 3.8.0

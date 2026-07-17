@@ -1,29 +1,40 @@
 {
-  "name": "@paldeck/api",
+  "name": "@app/api",
   "private": true,
+  "author": "Jordan Vohwinkel",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24.15"
   },
+  "files": [
+    "dist",
+    "scripts",
+    "package.json"
+  ],
   "scripts": {
-    "predev": "pnpm --filter @paldeck/database build",
+    "predev": "pnpm --filter @app/database build",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "pretest": "pnpm --filter @paldeck/database build",
+    "maps:sync": "node scripts/sync-map-assets.mjs",
+    "pretest": "pnpm --filter @app/database build",
     "test": "vitest run src",
+    "test:coverage": "vitest run src --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@fastify/static": "latest",
-    "@paldeck/database": "workspace:*",
-    "dotenv": "latest",
-    "fastify": "latest"
+    "@fastify/static": "10.1.0",
+    "@app/database": "workspace:0.1.0",
+    "dotenv": "17.4.2",
+    "fastify": "5.10.0",
+    "sharp": "0.35.3"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "tsx": "latest",
-    "typescript": "^5.9.3",
-    "vitest": "latest"
+    "@types/node": "26.1.1",
+    "tsx": "4.23.0",
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
   }
 }

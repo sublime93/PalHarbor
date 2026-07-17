@@ -1,10 +1,18 @@
 {
-  "name": "@paldeck/database",
+  "name": "@app/database",
+  "version": "0.1.0",
   "private": true,
+  "author": "Jordan Vohwinkel",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24.15"
   },
+  "files": [
+    "dist",
+    "generated",
+    "package.json"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -17,6 +25,7 @@
     "db:push": "pnpm schema:render && prisma db push",
     "build": "pnpm generate && tsc -p tsconfig.json",
     "test": "vitest run src",
+    "test:coverage": "vitest run src --coverage",
     "typecheck": "pnpm generate && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -27,11 +36,12 @@
     "pg": "8.22.0"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/pg": "latest",
-    "dotenv": "latest",
+    "@types/node": "26.1.1",
+    "@types/pg": "8.20.0",
+    "@vitest/coverage-v8": "4.1.10",
+    "dotenv": "17.4.2",
     "prisma": "7.8.0",
-    "typescript": "^5.9.3",
-    "vitest": "latest"
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
   }
 }

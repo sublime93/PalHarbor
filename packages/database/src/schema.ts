@@ -93,6 +93,7 @@ export async function initializeDatabaseSchema(
   client: DatabaseClient,
   provider: DatabaseProvider,
 ): Promise<void> {
-  const statements = provider === 'sqlite' ? sqliteStatements : postgresqlStatements
+  const statements =
+    provider === 'sqlite' ? sqliteStatements : postgresqlStatements
   for (const statement of statements) await client.$executeRawUnsafe(statement)
 }

@@ -28,7 +28,8 @@ export type Player = {
   building_count: number
 }
 
-export type ActorUnitType = 'Player' | 'OtomoPal' | 'BaseCampPal' | 'WildPal' | 'NPC'
+export type ActorUnitType =
+  'Player' | 'OtomoPal' | 'BaseCampPal' | 'WildPal' | 'NPC'
 
 export type Actor = Record<string, unknown> & {
   Type?: 'Character' | 'PalBox' | string
@@ -123,6 +124,8 @@ export type ActivitySummary = {
     running: boolean
     pollInFlight: boolean
     pollIntervalSeconds: number
+    retentionDays: number
+    storesIpAddresses: boolean
     lastSuccessfulPollAt: string | null
     lastFailedPollAt: string | null
   }

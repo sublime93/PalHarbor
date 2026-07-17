@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 .DS_Store
 .idea/
@@ -7,9 +8,13 @@ dist/
 .env.*
 !.env.example
 coverage/
+playwright-report/
+test-results/
+apps/docs/.vitepress/cache/
 apps/api/data/*.sqlite
 apps/api/data/*.sqlite-shm
 apps/api/data/*.sqlite-wal
+apps/api/data/maps/
 packages/database/*.sqlite
 packages/database/*.sqlite-shm
 packages/database/*.sqlite-wal

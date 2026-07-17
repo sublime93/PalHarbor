@@ -1,5 +1,8 @@
 export { ActivityTracker } from './tracker.js'
-export type { ActivityTrackerOptions, ActivityTrackerStatus } from './tracker.js'
+export type {
+  ActivityTrackerOptions,
+  ActivityTrackerStatus,
+} from './tracker.js'
 export {
   ActivityRepository,
   ACTIVITY_PERIOD_DAYS,
@@ -11,4 +14,4 @@ export {
   type ActivityReconcileResult,
   type ActivitySummary,
   type ActivityTopPlayer,
-} from '@paldeck/database'
+} from '@app/database'

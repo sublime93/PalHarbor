@@ -27,9 +27,11 @@ describe('world snapshot polling', () => {
       removeEventListener: vi.fn(),
     })
     vi.stubGlobal('window', {
-      setInterval: (...args: Parameters<typeof setInterval>) => setInterval(...args),
+      setInterval: (...args: Parameters<typeof setInterval>) =>
+        setInterval(...args),
       clearInterval: (id: ReturnType<typeof setInterval>) => clearInterval(id),
-      setTimeout: (...args: Parameters<typeof setTimeout>) => setTimeout(...args),
+      setTimeout: (...args: Parameters<typeof setTimeout>) =>
+        setTimeout(...args),
     })
   })
 
@@ -40,13 +42,19 @@ describe('world snapshot polling', () => {
   })
 
   it('fetches immediately, repeats after 60 seconds, and stops when the world view deactivates', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-      Time: '2026-07-13 12:30:00',
-      ActorData: [],
-    }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }))
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            Time: '2026-07-13 12:30:00',
+            ActorData: [],
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
+    )
     vi.stubGlobal('fetch', fetchMock)
     const monitor = createPalworldMonitor()
 
@@ -61,5 +69,20 @@ describe('world snapshot polling', () => {
     monitor.deactivateWorldView()
     await vi.advanceTimersByTimeAsync(120_000)
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('migrates preferences saved under the former product name', () => {
+    localStorage.setItem('paldeck-refresh', '30')
+    localStorage.setItem('paldeck-world-auto', 'false')
+    localStorage.setItem('paldeck-activity-days', '90')
+
+    const monitor = createPalworldMonitor()
+
+    expect(monitor.refreshSeconds.value).toBe(30)
+    expect(monitor.gameDataAuto.value).toBe(false)
+    expect(monitor.activityDays.value).toBe(90)
+    expect(localStorage.getItem('palharbor-refresh')).toBe('30')
+    expect(localStorage.getItem('palharbor-world-auto')).toBe('false')
+    expect(localStorage.getItem('palharbor-activity-days')).toBe('90')
   })
 })

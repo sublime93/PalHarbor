@@ -74,3 +74,41 @@ export type ActivitySummary = {
   recentSessions: ActivityRecentSession[]
   ipHistory: ActivityIpHistoryEntry[]
 }
+
+export type ActivityPruneResult = {
+  cutoff: string
+  deletedSessions: number
+  deletedIpObservations: number
+  deletedLatencyDays: number
+  deletedPlayers: number
+}
+
+export type ActivityExport = {
+  schemaVersion: 1
+  exportedAt: string
+  players: Array<{
+    userId: string
+    playerId: string | null
+    name: string
+    accountName: string
+    lastLevel: number | null
+    firstSeenAt: string
+    lastSeenAt: string
+  }>
+  sessions: Array<{
+    id: string
+    userId: string
+    connectedAt: string
+    lastSeenAt: string
+    disconnectedAt: string | null
+    durationSeconds: number
+    active: boolean
+  }>
+  ipObservations: ActivityIpHistoryEntry[]
+  latencyDaily: Array<{
+    userId: string
+    dayStart: string
+    latencySumMs: number
+    sampleCount: number
+  }>
+}

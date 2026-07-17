@@ -10,9 +10,12 @@ export const actorCategoryOrder = [
   'Unknown',
 ] as const
 
-export type ActorCategory = typeof actorCategoryOrder[number]
+export type ActorCategory = (typeof actorCategoryOrder)[number]
 
-export const actorCategoryMeta: Record<ActorCategory, { label: string; color: string }> = {
+export const actorCategoryMeta: Record<
+  ActorCategory,
+  { label: string; color: string }
+> = {
   Player: { label: 'Players', color: '#58d7dd' },
   OtomoPal: { label: 'Companion Pals', color: '#f7ba54' },
   BaseCampPal: { label: 'Base Pals', color: '#6bd59b' },
@@ -49,14 +52,18 @@ export function actorCategory(actor: Actor): ActorCategory {
 }
 
 export function actorDisplayName(actor: Actor): string {
-  return actor.NickName
-    || actor.Name
-    || actor.TrainerNickName
-    || (actor.Type === 'PalBox' ? actor.GuildName && `${actor.GuildName} Palbox` : undefined)
-    || actor.Class
-    || actor.UnitType
-    || actor.Type
-    || 'Unknown actor'
+  return (
+    actor.NickName ||
+    actor.Name ||
+    actor.TrainerNickName ||
+    (actor.Type === 'PalBox'
+      ? actor.GuildName && `${actor.GuildName} Palbox`
+      : undefined) ||
+    actor.Class ||
+    actor.UnitType ||
+    actor.Type ||
+    'Unknown actor'
+  )
 }
 
 export function actorPosition(actor: Actor): WorldPosition | null {
@@ -67,7 +74,9 @@ export function actorPosition(actor: Actor): WorldPosition | null {
 }
 
 export function calculateWorldBounds(actors: Actor[]): WorldBounds {
-  const positions = actors.map(actorPosition).filter((value): value is WorldPosition => value !== null)
+  const positions = actors
+    .map(actorPosition)
+    .filter((value): value is WorldPosition => value !== null)
   if (!positions.length) return { minX: -1, maxX: 1, minY: -1, maxY: 1 }
 
   let minX = positions[0]?.x ?? -1

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ActivityRepository } from '@paldeck/database'
+import type { ActivityRepository } from '@app/database'
 import { ActivityTracker } from './tracker.js'
 
 function deferred<T>() {
@@ -25,8 +25,10 @@ afterEach(() => {
 describe('ActivityTracker', () => {
   it('polls immediately and never overlaps a slow poll', async () => {
     vi.useFakeTimers()
-    const first = deferred<readonly [{ userId: string; name: string; ping: number }]>()
-    const getPlayers = vi.fn()
+    const first =
+      deferred<readonly [{ userId: string; name: string; ping: number }]>()
+    const getPlayers = vi
+      .fn()
       .mockImplementationOnce(() => first.promise)
       .mockResolvedValue([{ userId: 'alice-id', name: 'Alice', ping: 0 }])
     const reconcilePlayers = vi.fn()
@@ -60,7 +62,8 @@ describe('ActivityTracker', () => {
   it('treats failed polls as unknown state and recovers on the next interval', async () => {
     vi.useFakeTimers()
     const error = new Error('Palworld unavailable')
-    const getPlayers = vi.fn()
+    const getPlayers = vi
+      .fn()
       .mockRejectedValueOnce(error)
       .mockResolvedValueOnce([{ userId: 'alice-id', name: 'Alice' }])
     const reconcilePlayers = vi.fn()
@@ -117,7 +120,9 @@ describe('ActivityTracker', () => {
   it('is idempotent when start and stop are called repeatedly', async () => {
     const getPlayers = vi.fn().mockResolvedValue([])
     const tracker = new ActivityTracker({
-      repository: { reconcilePlayers: vi.fn() } as unknown as ActivityRepository,
+      repository: {
+        reconcilePlayers: vi.fn(),
+      } as unknown as ActivityRepository,
       getPlayers,
       intervalMs: 10,
     })

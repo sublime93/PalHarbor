@@ -20,7 +20,8 @@ export type Database = {
 
 function providerForUrl(url: string): DatabaseProvider {
   if (url.startsWith('file:')) return 'sqlite'
-  if (url.startsWith('postgres://') || url.startsWith('postgresql://')) return 'postgresql'
+  if (url.startsWith('postgres://') || url.startsWith('postgresql://'))
+    return 'postgresql'
   throw new TypeError('DATABASE_URL must use file:, postgres:, or postgresql:.')
 }
 
