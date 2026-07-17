@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="PalHarbor logo">
+  <defs>
+    <linearGradient id="ring" x1="18" y1="16" x2="110" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#78ecdf"/>
+      <stop offset="1" stop-color="#12a8c4"/>
+    </linearGradient>
+    <radialGradient id="core">
+      <stop stop-color="#d7fff5"/>
+      <stop offset=".4" stop-color="#5be4db"/>
+      <stop offset="1" stop-color="#1399b3"/>
+    </radialGradient>
+  </defs>
+  <circle cx="64" cy="64" r="51" fill="#081923" stroke="url(#ring)" stroke-width="8"/>
+  <path d="M64 13v18M64 97v18M13 64h18M97 64h18" stroke="#8cf1e3" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="24" fill="url(#core)"/>
+  <circle cx="64" cy="64" r="9" fill="#eafffb"/>
+</svg>
