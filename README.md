@@ -81,6 +81,15 @@ Compose binds the dashboard to localhost, requires separate PalHarbor operator
 credentials, runs as a non-root user, and persists activity and versioned map
 data in the `palharbor-data` volume.
 
+Published releases are also available from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/sublime93/palharbor:latest
+```
+
+Pin a numbered tag such as `1.2.3` for repeatable deployments. Release
+candidates receive their full prerelease tag but never replace `latest`.
+
 ## What you get
 
 - Live `info`, `metrics`, and `players` monitoring with selectable 5/10/30/60-second refresh
