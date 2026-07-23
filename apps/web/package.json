@@ -12,12 +12,12 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
-    "@fontsource/barlow-condensed": "5.2.8",
-    "@fontsource/dm-sans": "5.2.8",
-    "@lucide/vue": "1.24.0",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "@fontsource/dm-sans": "5.3.0",
+    "@lucide/vue": "1.25.0",
     "leaflet": "1.9.4",
-    "vue": "3.5.39",
-    "vue-router": "5.1.0"
+    "vue": "3.5.40",
+    "vue-router": "5.2.0"
   },
   "devDependencies": {
     "@tsconfig/node22": "22.0.5",
@@ -26,7 +26,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "@vitejs/plugin-vue": "6.0.8",
     "@vue/tsconfig": "0.9.1",
-    "typescript": "7.0.2",
+    "typescript": "5.9.3",
     "vite": "8.1.5",
     "vitest": "4.1.10",
     "vue-tsc": "3.3.7"
