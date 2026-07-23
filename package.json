@@ -4,6 +4,14 @@
   "type": "module",
   "author": "Jordan Vohwinkel",
   "license": "MIT",
+  "homepage": "https://github.com/sublime93/PalHarbor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sublime93/PalHarbor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sublime93/PalHarbor/issues"
+  },
   "packageManager": "pnpm@11.4.0",
   "scripts": {
     "dev": "concurrently -k -n gateway,web -c yellow,cyan \"pnpm --filter @app/api dev\" \"pnpm --filter @app/web dev\"",

@@ -1,22 +1,65 @@
-# PalHarbor
+<p align="center">
+  <img src="apps/docs/public/logo.svg" width="112" alt="PalHarbor logo">
+</p>
 
-A local-first Vue dashboard for operating and monitoring a Palworld dedicated server. PalHarbor covers every endpoint in the official `/v1/api` REST contract, adds safe auto-refresh, and keeps Basic Auth credentials in a Fastify gateway instead of the browser bundle.
+<h1 align="center">PalHarbor</h1>
+
+<p align="center">
+  A friendly, local-first control room for your Palworld dedicated server.
+</p>
+
+<p align="center">
+  <a href="https://github.com/sublime93/PalHarbor/actions/workflows/ci.yml"><img src="https://github.com/sublime93/PalHarbor/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-32c8b4.svg" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Node.js-24.15%2B-5fa04e.svg" alt="Node.js 24.15 or newer">
+</p>
+
+PalHarbor gives server owners one clean dashboard for live health, players,
+world activity, and administrative commands. The Vue frontend talks to a
+same-origin Fastify gateway, so your Palworld administrator password stays on
+the server and never enters the browser bundle.
 
 > **Unofficial fan project:** PalHarbor is not affiliated with, endorsed by, or
 > sponsored by Pocketpair, Inc. Palworld and its game content are property of
 > Pocketpair. This repository does not distribute extracted game artwork.
 
-## Run it
+## Why PalHarbor?
+
+- **See the server at a glance.** Follow FPS, uptime, connected players,
+  settings, and world population without juggling API calls.
+- **Operate with guardrails.** Kick, ban, announce, save, shut down, or stop
+  the server with typed confirmations for high-impact actions.
+- **Keep useful history.** Review sessions, playtime, latency trends, and daily
+  activity in SQLite or PostgreSQL—even when no browser is open.
+- **Stay local by default.** PalHarbor binds to loopback, keeps credentials in
+  the gateway, and is designed for localhost, trusted LAN, or VPN access.
+
+## Quick start
+
+You need Node.js 24.15 or newer, Corepack, and an existing Palworld dedicated
+server with its REST API enabled.
 
 ```bash
+corepack enable
 pnpm install
 cp apps/api/.env.example apps/api/.env
 pnpm dev
 ```
 
-Set the Palworld server URL and admin credentials in the ignored `apps/api/.env`, then open [http://localhost:5173](http://localhost:5173).
+Set `PALWORLD_API_URL`, `PALWORLD_USERNAME`, and `PALWORLD_PASSWORD` in the
+ignored `apps/api/.env`, then open
+[http://localhost:5173](http://localhost:5173). That is enough for a first
+local run.
 
-For a production-style local run:
+> [!IMPORTANT]
+> PalHarbor and the Palworld REST API both grant administrative access. Keep
+> them on localhost, a trusted LAN, or a VPN—never directly on the public
+> Internet.
+
+For the full walkthrough, see [Getting started](apps/docs/guide/getting-started.md)
+and [Configuration](apps/docs/guide/configuration.md).
+
+### Production-style local run
 
 ```bash
 pnpm build
@@ -25,8 +68,10 @@ pnpm start
 
 Then open [http://localhost:4174](http://localhost:4174).
 
-For a containerized installation, set the required credentials in your shell
-or a local root `.env` file, then run:
+### Docker Compose
+
+Set `PALWORLD_USERNAME`, `PALWORLD_PASSWORD`, `PALHARBOR_USERNAME`, and
+`PALHARBOR_PASSWORD` in a local root `.env` file, then run:
 
 ```bash
 docker compose up --build -d
@@ -36,7 +81,7 @@ Compose binds the dashboard to localhost, requires separate PalHarbor operator
 credentials, runs as a non-root user, and persists activity and versioned map
 data in the `palharbor-data` volume.
 
-## What is covered
+## What you get
 
 - Live `info`, `metrics`, and `players` monitoring with selectable 5/10/30/60-second refresh
 - Lower-frequency settings refresh and a page-scoped 60-second GameData population radar
@@ -46,6 +91,13 @@ data in the `palharbor-data` volume.
 - Read-only rendering for every returned setting, including new keys unknown to the UI
 - Same-origin allowlisted gateway for `info`, `players`, `settings`, `metrics`, `game-data`, `announce`, `kick`, `ban`, `unban`, `save`, `shutdown`, and `stop`
 - Durable player connection and latency history with first/last seen times, session start/end times, total playtime, daily trends, and leaderboards; IP history is explicitly opt-in
+
+## How it fits together
+
+```text
+Browser dashboard  →  PalHarbor gateway  →  Palworld REST API
+   localhost             localhost          trusted LAN
+```
 
 ## Project structure
 
@@ -59,6 +111,11 @@ The pnpm workspace contains three applications:
 Production serves the built Vue application through Fastify, including history fallback for direct page links without turning missing `/api` requests into HTML responses.
 
 ## Documentation
+
+The repository includes a complete VitePress guide covering installation,
+configuration, day-to-day operation, activity tracking, map assets, security,
+and troubleshooting. Start with the
+[documentation index](apps/docs/index.md), or run it locally:
 
 Run the documentation site locally at [http://localhost:5174](http://localhost:5174):
 
@@ -134,6 +191,16 @@ The supplied server was live-tested successfully for info, metrics, players, set
 Palworld warns that its REST API is not intended for public Internet exposure. PalHarbor binds to localhost by default, never sends the admin password to Vue, and does not include it in tracked files. Pino redacts authorization and credential fields, and mutation requests require a PalHarbor-only request marker. Non-loopback listeners require built-in PalHarbor credentials unless an operator explicitly acknowledges that an authenticated proxy supplies the boundary. Keep the gateway on the same machine or a trusted LAN/VPN.
 
 The username `admin` works on the tested server but is not specified as a default in the official REST documentation. Use a unique admin password and rotate it if it has been shared.
+
+Found a vulnerability? Please follow the private reporting process in
+[SECURITY.md](SECURITY.md) rather than opening a public issue.
+
+## Contributing
+
+Ideas, fixes, and documentation improvements are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and pull request
+checklist, and please keep game assets, credentials, player data, save files,
+and production databases out of contributions.
 
 ## Author
 

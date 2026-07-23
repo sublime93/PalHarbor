@@ -19,6 +19,9 @@ export default defineConfig({
       { text: 'Configuration', link: '/guide/configuration' },
       { text: 'Operations', link: '/guide/using-palharbor' },
     ],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/sublime93/PalHarbor' },
+    ],
     sidebar: [
       {
         text: 'Get started',

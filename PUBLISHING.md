@@ -9,8 +9,8 @@ The local history-preparation step is complete:
 Complete these repository-owner steps before making PalHarbor public:
 
 - [x] Add the MIT License and state the contribution terms.
-- Set the repository description, topics, homepage, and social preview after
-  the final GitHub URL is known; then add that URL to the package metadata.
+- [x] Add the final GitHub URL to package and documentation metadata.
+- Set the repository description, topics, homepage, and social preview.
 - Publish from a fresh clone with `git push origin main` (and explicit release
   tags). Do not use `git push --mirror` or publish this workspace's private
   `refs/codex/` checkpoint refs.
