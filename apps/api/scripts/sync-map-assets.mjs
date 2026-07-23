@@ -7,7 +7,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import sharp from 'sharp'
@@ -40,16 +40,35 @@ function argumentsFrom(argv) {
   return values
 }
 
-function safeVersion(value) {
+export function safeVersion(value) {
   const version = String(value ?? '')
     .trim()
     .replace(/^v(?=\d)/, '')
-  if (!/^[a-zA-Z0-9._-]{1,80}$/.test(version)) {
+  if (
+    version === '.' ||
+    version === '..' ||
+    !/^[a-zA-Z0-9._-]{1,80}$/.test(version)
+  ) {
     throw new Error(
-      'The map version may contain only letters, numbers, dots, underscores, and hyphens.',
+      'The map version must be an ordinary directory name containing only letters, numbers, dots, underscores, and hyphens.',
     )
   }
   return version
+}
+
+export function strictChildPath(root, segment) {
+  const base = resolve(root)
+  const destination = resolve(base, segment)
+  const child = relative(base, destination)
+  if (
+    !child ||
+    child === '..' ||
+    child.startsWith(`..${sep}`) ||
+    isAbsolute(child)
+  ) {
+    throw new Error('The generated map path must stay below the map root.')
+  }
+  return destination
 }
 
 async function findFile(root, filename) {
@@ -273,7 +292,7 @@ async function main() {
   }
 
   await mkdir(dataRoot, { recursive: true, mode: 0o700 })
-  const destination = join(dataRoot, gameVersion)
+  const destination = strictChildPath(dataRoot, gameVersion)
   if (await versionMatchesSources(destination, gameVersion, sourceHashes)) {
     await atomicJson(join(dataRoot, 'current.json'), { gameVersion })
     process.stdout.write(
@@ -282,7 +301,10 @@ async function main() {
     return
   }
 
-  const temporary = join(dataRoot, `.generating-${gameVersion}-${process.pid}`)
+  const temporary = strictChildPath(
+    dataRoot,
+    `.generating-${gameVersion}-${process.pid}`,
+  )
   await rm(temporary, { recursive: true, force: true })
   await mkdir(temporary, { recursive: true, mode: 0o700 })
 
@@ -328,9 +350,14 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? error.message : String(error)}\n`,
-  )
-  process.exitCode = 1
-})
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((error) => {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    )
+    process.exitCode = 1
+  })
+}
