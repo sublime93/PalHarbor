@@ -20,6 +20,7 @@
     "maps:sync": "node scripts/sync-map-assets.mjs",
     "pretest": "pnpm --filter @app/database build",
     "test": "vitest run src",
+    "pretest:coverage": "pnpm --filter @app/database build",
     "test:coverage": "vitest run src --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
