@@ -1,25 +1,86 @@
 services:
-  palharbor:
-    build: .
+  palworld:
+    image: thijsvanloef/palworld-server-docker:latest
+    pull_policy: always
     restart: unless-stopped
+    container_name: palworld-server
+    stop_grace_period: 30s
     ports:
-      - '127.0.0.1:4174:4174'
+      - '8211:8211/udp'
+      - '27015:27015/udp'
+    expose:
+      - '8212'
     environment:
-      PALWORLD_API_URL: ${PALWORLD_API_URL:-http://host.docker.internal:8212/v1/api}
+      PUID: '${PUID:-1000}'
+      PGID: '${PGID:-1000}'
+      PORT: '8211'
+      PLAYERS: '16'
+      SERVER_PASSWORD: '${PALWORLD_SERVER_PASSWORD:-}'
+      MULTITHREADING: 'true'
+      REST_API_ENABLED: 'true'
+      REST_API_PORT: '8212'
+      ENABLE_GAMEDATA_API: 'true'
+      TZ: 'America/Chicago'
+      ADMIN_PASSWORD: ${PALWORLD_PASSWORD:?Set PALWORLD_PASSWORD}
+      COMMUNITY: 'true'
+      SERVER_NAME: 'Palshank Redemption'
+      SERVER_DESCRIPTION: 'get busy catching or get busy dying'
+      CROSSPLAY_PLATFORMS: '(Steam,Xbox,PS5,Mac)'
+      UPDATE_ON_BOOT: 'true'
+      DELETE_OLD_BACKUPS: 'true'
+      OLD_BACKUP_DAYS: '90'
+      AUTO_UPDATE_ENABLED: 'true'
+      AUTO_REBOOT_ENABLED: 'false'
+      AUTO_REBOOT_EVEN_IF_PLAYERS_ONLINE: 'false'
+      AUTO_PAUSE_ENABLED: 'true'
+      ENABLE_PLAYER_LOGGING: 'true'
+      RCON_ENABLED: 'true'
+      DIFFICULTY: 'Normal'
+      PAL_SPAWN_NUM_RATE: '1.9'
+      ENABLE_VOICE_CHAT: 'true'
+      IS_PVP: 'false'
+      IS_MULTIPLAY: 'true'
+      ENABLE_PLAYER_TO_PLAYER_DAMAGE: 'true'
+    volumes:
+      - ./data:/palworld/
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - rest-cli info --no-flush-log >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+  palharbor:
+    image: ghcr.io/sublime93/palharbor:${PALHARBOR_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      palworld:
+        condition: service_healthy
+    ports:
+      - '${PALHARBOR_BIND_ADDRESS:-127.0.0.1}:${PALHARBOR_PORT:-4174}:4174'
+    environment:
+      PALWORLD_API_URL: ${PALWORLD_API_URL:-http://palworld:8212/v1/api}
       PALWORLD_USERNAME: ${PALWORLD_USERNAME:?Set PALWORLD_USERNAME}
       PALWORLD_PASSWORD: ${PALWORLD_PASSWORD:?Set PALWORLD_PASSWORD}
       PALHARBOR_USERNAME: ${PALHARBOR_USERNAME:?Set PALHARBOR_USERNAME}
       PALHARBOR_PASSWORD: ${PALHARBOR_PASSWORD:?Set PALHARBOR_PASSWORD}
+      PALHARBOR_ALLOWED_HOSTS: ${PALHARBOR_ALLOWED_HOSTS:-}
+      PALHARBOR_ALLOWED_ORIGINS: ${PALHARBOR_ALLOWED_ORIGINS:-}
+      ALLOW_UNAUTHENTICATED_REMOTE: ${ALLOW_UNAUTHENTICATED_REMOTE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL:-file:./data/palharbor.sqlite}
+      ACTIVITY_ENABLED: ${ACTIVITY_ENABLED:-true}
+      ACTIVITY_POLL_SECONDS: ${ACTIVITY_POLL_SECONDS:-15}
+      ACTIVITY_RETENTION_DAYS: ${ACTIVITY_RETENTION_DAYS:-90}
+      STORE_PLAYER_IPS: ${STORE_PLAYER_IPS:-false}
       MAP_DATA_PATH: /prod/api/data/maps
-      PALWORLD_SERVER_ROOT: ${PALWORLD_SERVER_ROOT:-}
-      PALWORLD_MAP_PALPAGOS_SOURCE: ${PALWORLD_MAP_PALPAGOS_SOURCE:-}
-      PALWORLD_MAP_WORLD_TREE_SOURCE: ${PALWORLD_MAP_WORLD_TREE_SOURCE:-}
-      PALWORLD_CAVE_ENTRANCES_SOURCE: ${PALWORLD_CAVE_ENTRANCES_SOURCE:-}
+      PALWORLD_MAP_SYNC_ENABLED: ${PALWORLD_MAP_SYNC_ENABLED:-true}
+      PALWORLD_MAP_PALPAGOS_URL: ${PALWORLD_MAP_PALPAGOS_URL:-https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_WorldMap.webp}
+      PALWORLD_MAP_WORLD_TREE_URL: ${PALWORLD_MAP_WORLD_TREE_URL:-https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_TreeMap.webp}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
-      - palharbor-data:/prod/api/data
-      - ${PALWORLD_MAP_SOURCE_DIR:-./map-sources}:/map-sources:ro
-
-volumes:
-  palharbor-data:
+      - ./palharbor-data:/prod/api/data

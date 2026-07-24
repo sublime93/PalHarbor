@@ -21,36 +21,38 @@ ACTIVITY_ENABLED=true
 ACTIVITY_POLL_SECONDS=15
 ACTIVITY_RETENTION_DAYS=90
 STORE_PLAYER_IPS=false
+PALWORLD_MAP_SYNC_ENABLED=true
+PALWORLD_MAP_PALPAGOS_URL=https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_WorldMap.webp
+PALWORLD_MAP_WORLD_TREE_URL=https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_TreeMap.webp
 ```
 
 ## Environment variables
 
 <div class="env-table">
 
-| Variable                         | Required | Default                        | Description                                                                                                                              |
-| -------------------------------- | -------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `PALWORLD_API_URL`               | Yes      | —                              | Full Palworld REST base URL, normally ending in `/v1/api`. A trailing slash is removed.                                                  |
-| `PALWORLD_USERNAME`              | Yes      | —                              | REST API Basic Auth username. Use the username configured for your server.                                                               |
-| `PALWORLD_PASSWORD`              | Yes      | —                              | REST API administrator password. Never commit this value.                                                                                |
-| `HOST`                           | No       | `127.0.0.1`                    | Interface on which the PalHarbor gateway listens.                                                                                        |
-| `PORT`                           | No       | `4174`                         | Gateway port from `0` through `65535`. Invalid values fall back to `4174`; `0` asks the OS for an available port.                        |
-| `LOG_LEVEL`                      | No       | `info`                         | Pino log level, such as `trace`, `debug`, `info`, `warn`, or `error`.                                                                    |
-| `PALHARBOR_USERNAME`             | No       | —                              | Enables HTTP Basic authentication for the dashboard and PalHarbor API. Must be set with `PALHARBOR_PASSWORD`.                            |
-| `PALHARBOR_PASSWORD`             | No       | —                              | PalHarbor operator password. Use a value different from the upstream Palworld administrator password.                                    |
-| `PALHARBOR_ALLOWED_HOSTS`        | No       | —                              | Comma-separated DNS hostnames accepted by Host validation. IP literals and `localhost` are accepted automatically.                       |
-| `PALHARBOR_ALLOWED_ORIGINS`      | No       | —                              | Additional comma-separated origins permitted to make mutations when a reverse proxy changes the apparent Host.                           |
-| `ALLOW_UNAUTHENTICATED_REMOTE`   | No       | `false`                        | Allows a non-loopback listener without built-in authentication. Use only when an authenticated proxy or equivalent boundary is verified. |
-| `DATABASE_URL`                   | No       | `file:./data/palharbor.sqlite` | Prisma connection URL. Supports local SQLite (`file:`) and PostgreSQL (`postgresql:` or `postgres:`).                                    |
-| `ACTIVITY_ENABLED`               | No       | `true`                         | Enables durable player activity collection.                                                                                              |
-| `ACTIVITY_DATABASE_PATH`         | No       | —                              | Deprecated SQLite-only path retained for existing installations. Ignored when `DATABASE_URL` is set.                                     |
-| `ACTIVITY_POLL_SECONDS`          | No       | `15`                           | Background player snapshot interval. Accepts 5–300 seconds; an invalid value falls back to 15.                                           |
-| `ACTIVITY_RETENTION_DAYS`        | No       | `90`                           | Retains activity data for 1–3650 days and prunes older records daily.                                                                    |
-| `STORE_PLAYER_IPS`               | No       | `false`                        | Opts into storing player IP observations. Client ports are always removed.                                                               |
-| `MAP_DATA_PATH`                  | No       | `apps/api/data/maps`           | Versioned local terrain tile storage.                                                                                                    |
-| `PALWORLD_SERVER_ROOT`           | No       | —                              | Optional root searched for already-extracted map WebPs; configuring it enables fail-safe startup synchronization.                        |
-| `PALWORLD_MAP_PALPAGOS_SOURCE`   | No       | —                              | Local Palpagos WebP source; configuring it enables fail-safe startup synchronization.                                                    |
-| `PALWORLD_MAP_WORLD_TREE_SOURCE` | No       | —                              | Local World Tree WebP source; configuring it enables fail-safe startup synchronization.                                                  |
-| `PALWORLD_CAVE_ENTRANCES_SOURCE` | No       | —                              | Optional authorized local cave-coordinate JSON source used by `maps:sync`.                                                               |
+| Variable                       | Required | Default                        | Description                                                                                                                              |
+| ------------------------------ | -------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `PALWORLD_API_URL`             | Yes      | —                              | Full Palworld REST base URL, normally ending in `/v1/api`. A trailing slash is removed.                                                  |
+| `PALWORLD_USERNAME`            | Yes      | —                              | REST API Basic Auth username. Use the username configured for your server.                                                               |
+| `PALWORLD_PASSWORD`            | Yes      | —                              | REST API administrator password. Never commit this value.                                                                                |
+| `HOST`                         | No       | `127.0.0.1`                    | Interface on which the PalHarbor gateway listens.                                                                                        |
+| `PORT`                         | No       | `4174`                         | Gateway port from `0` through `65535`. Invalid values fall back to `4174`; `0` asks the OS for an available port.                        |
+| `LOG_LEVEL`                    | No       | `info`                         | Pino log level, such as `trace`, `debug`, `info`, `warn`, or `error`.                                                                    |
+| `PALHARBOR_USERNAME`           | No       | —                              | Enables HTTP Basic authentication for the dashboard and PalHarbor API. Must be set with `PALHARBOR_PASSWORD`.                            |
+| `PALHARBOR_PASSWORD`           | No       | —                              | PalHarbor operator password. Use a value different from the upstream Palworld administrator password.                                    |
+| `PALHARBOR_ALLOWED_HOSTS`      | No       | —                              | Comma-separated DNS hostnames accepted by Host validation. IP literals and `localhost` are accepted automatically.                       |
+| `PALHARBOR_ALLOWED_ORIGINS`    | No       | —                              | Additional comma-separated origins permitted to make mutations when a reverse proxy changes the apparent Host.                           |
+| `ALLOW_UNAUTHENTICATED_REMOTE` | No       | `false`                        | Allows a non-loopback listener without built-in authentication. Use only when an authenticated proxy or equivalent boundary is verified. |
+| `DATABASE_URL`                 | No       | `file:./data/palharbor.sqlite` | Prisma connection URL. Supports local SQLite (`file:`) and PostgreSQL (`postgresql:` or `postgres:`).                                    |
+| `ACTIVITY_ENABLED`             | No       | `true`                         | Enables durable player activity collection.                                                                                              |
+| `ACTIVITY_DATABASE_PATH`       | No       | —                              | Deprecated SQLite-only path retained for existing installations. Ignored when `DATABASE_URL` is set.                                     |
+| `ACTIVITY_POLL_SECONDS`        | No       | `15`                           | Background player snapshot interval. Accepts 5–300 seconds; an invalid value falls back to 15.                                           |
+| `ACTIVITY_RETENTION_DAYS`      | No       | `90`                           | Retains activity data for 1–3650 days and prunes older records daily.                                                                    |
+| `STORE_PLAYER_IPS`             | No       | `false`                        | Opts into storing player IP observations. Client ports are always removed.                                                               |
+| `MAP_DATA_PATH`                | No       | `apps/api/data/maps`           | Persistent remote-source cache and versioned local terrain tile storage.                                                                 |
+| `PALWORLD_MAP_SYNC_ENABLED`    | No       | `true`                         | Downloads, validates, and synchronizes terrain maps during startup. Set `false` to use the grid fallback.                                |
+| `PALWORLD_MAP_PALPAGOS_URL`    | No       | Built-in community URL         | Trusted HTTPS override for the 8192 × 8192 Palpagos WebP.                                                                                |
+| `PALWORLD_MAP_WORLD_TREE_URL`  | No       | Built-in community URL         | Trusted HTTPS override for the 8192 × 8192 World Tree WebP.                                                                              |
 
 </div>
 

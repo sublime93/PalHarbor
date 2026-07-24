@@ -8,6 +8,7 @@ dist/
 .env.*
 !.env.example
 coverage/
+data/
 playwright-report/
 test-results/
 apps/docs/.vitepress/cache/
