@@ -8,7 +8,7 @@ import {
   loadServerConfig,
 } from './core/config.js'
 import {
-  isStartupMapSyncConfigured,
+  isStartupMapSyncEnabled,
   synchronizeMapsAtStartup,
 } from './maps/startup-sync.js'
 
@@ -34,7 +34,7 @@ if (isMain) {
 
   try {
     try {
-      if (isStartupMapSyncConfigured()) {
+      if (isStartupMapSyncEnabled()) {
         app.log.info('Automatic map synchronization starting')
       }
       const result = await synchronizeMapsAtStartup()

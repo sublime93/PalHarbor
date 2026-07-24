@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/sublime93/PalHarbor/actions/workflows/ci.yml"><img src="https://github.com/sublime93/PalHarbor/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-32c8b4.svg" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/Node.js-24.15%2B-5fa04e.svg" alt="Node.js 24.15 or newer">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ed.svg?logo=docker&logoColor=white" alt="Docker Compose">
 </p>
 
 PalHarbor gives server owners one clean dashboard for live health, players,
@@ -34,61 +34,203 @@ the server and never enters the browser bundle.
 - **Stay local by default.** PalHarbor binds to loopback, keeps credentials in
   the gateway, and is designed for localhost, trusted LAN, or VPN access.
 
-## Quick start
+## Run with Docker
 
-You need Node.js 24.15 or newer, Corepack, and an existing Palworld dedicated
-server with its REST API enabled.
+The recommended setup uses Docker Compose. You do not need Node.js, pnpm, or a
+local database installation.
 
-```bash
-corepack enable
-pnpm install
-cp apps/api/.env.example apps/api/.env
-pnpm dev
-```
+### Prerequisites
 
-Set `PALWORLD_API_URL`, `PALWORLD_USERNAME`, and `PALWORLD_PASSWORD` in the
-ignored `apps/api/.env`, then open
-[http://localhost:5173](http://localhost:5173). That is enough for a first
-local run.
+- Docker Engine or Docker Desktop with the Compose plugin
+- An existing Palworld dedicated server with its REST API enabled
+- The REST API URL, administrator username, and administrator password
+
+The API URL must be reachable **from the container** and normally ends in
+`/v1/api`. Port `8212` is common, but use the REST API port configured on your
+server.
 
 > [!IMPORTANT]
 > PalHarbor and the Palworld REST API both grant administrative access. Keep
-> them on localhost, a trusted LAN, or a VPN—never directly on the public
-> Internet.
+> them on the same machine, a trusted LAN, or a VPN. Do not expose either
+> service directly to the public Internet.
 
-For the full walkthrough, see [Getting started](apps/docs/guide/getting-started.md)
-and [Configuration](apps/docs/guide/configuration.md).
+### 1. Create the Docker configuration
 
-### Production-style local run
-
-```bash
-pnpm build
-pnpm start
-```
-
-Then open [http://localhost:4174](http://localhost:4174).
-
-### Docker Compose
-
-Set `PALWORLD_USERNAME`, `PALWORLD_PASSWORD`, `PALHARBOR_USERNAME`, and
-`PALHARBOR_PASSWORD` in a local root `.env` file, then run:
+Clone the repository, copy the Docker environment template, and edit `.env`:
 
 ```bash
-docker compose up --build -d
+git clone https://github.com/sublime93/PalHarbor.git
+cd PalHarbor
+cp .env.example .env
 ```
 
-Compose binds the dashboard to localhost, requires separate PalHarbor operator
-credentials, runs as a non-root user, and persists activity and versioned map
-data in the `palharbor-data` volume.
+Review the API URL and usernames, then replace both `replace-me` passwords:
 
-Published releases are also available from GitHub Container Registry:
+```dotenv
+PALWORLD_API_URL=http://host.docker.internal:8212/v1/api
+PALWORLD_USERNAME=admin
+PALWORLD_PASSWORD=replace-me-with-your-palworld-admin-password
+
+PALHARBOR_USERNAME=operator
+PALHARBOR_PASSWORD=replace-me-with-a-long-unique-password
+```
+
+The PalHarbor login is separate from the upstream Palworld administrator
+login. Use a different, unique password for each.
+
+### 2. Start PalHarbor
 
 ```bash
-docker pull ghcr.io/sublime93/palharbor:latest
+docker compose up -d
 ```
 
-Pin a numbered tag such as `1.2.3` for repeatable deployments. Release
-candidates receive their full prerelease tag but never replace `latest`.
+Compose pulls the published image and then:
+
+- publishes the dashboard at
+  [http://127.0.0.1:4174](http://127.0.0.1:4174);
+- requires the `PALHARBOR_USERNAME` and `PALHARBOR_PASSWORD` login;
+- runs the application as a non-root user; and
+- persists the SQLite database and map data in the `palharbor-data` volume.
+
+Open the dashboard and sign in with the PalHarbor credentials from `.env`.
+
+### 3. Verify the container
+
+```bash
+docker compose ps
+docker compose logs --tail=100 palharbor
+curl --user 'operator:your-palharbor-password' \
+  http://127.0.0.1:4174/api/health
+```
+
+A configured gateway returns:
+
+```json
+{ "configured": true }
+```
+
+This confirms that the three upstream values are present. The Overview page is
+the final check that the container can reach Palworld and that its credentials
+are accepted.
+
+## Connecting the container to Palworld
+
+`PALWORLD_API_URL` is resolved by the PalHarbor container, not by your browser.
+Choose the address that matches your deployment:
+
+- **Palworld on the Docker host:** keep
+  `http://host.docker.internal:8212/v1/api`. The Compose file includes the
+  Linux host-gateway mapping; Docker Desktop provides the same hostname.
+- **Palworld on another trusted machine:** use its LAN or VPN address, for
+  example `http://192.168.1.50:8212/v1/api`.
+- **Palworld in Docker:** attach both services to the same Docker network and
+  use the Palworld service name, such as
+  `http://palworld:8212/v1/api`.
+
+Allow the REST port only between trusted machines or containers. If the
+dashboard says the gateway is configured but upstream requests fail, inspect
+`docker compose logs -f palharbor` and test the configured address from the
+Docker host.
+
+## Docker configuration
+
+The root [`.env.example`](.env.example) contains the complete Compose-oriented
+configuration. Restart the container after changing `.env`:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+### Required settings
+
+| Variable             | Purpose                                                               |
+| -------------------- | --------------------------------------------------------------------- |
+| `PALWORLD_USERNAME`  | Username configured for the Palworld REST API.                        |
+| `PALWORLD_PASSWORD`  | Palworld REST administrator password. Never commit this value.        |
+| `PALHARBOR_USERNAME` | Username used to sign in to PalHarbor.                                |
+| `PALHARBOR_PASSWORD` | PalHarbor password; use a value different from the Palworld password. |
+
+`PALWORLD_API_URL` defaults to
+`http://host.docker.internal:8212/v1/api`, but it must be changed when that
+address does not reach your server.
+
+### Network and access settings
+
+| Variable                       | Default     | Purpose                                                                                                                                    |
+| ------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PALHARBOR_BIND_ADDRESS`       | `127.0.0.1` | Host interface published by Compose. Keep loopback for local use or a host-local proxy; use a trusted interface address for remote access. |
+| `PALHARBOR_PORT`               | `4174`      | Port opened on the Docker host. The container continues to listen internally on `4174`.                                                    |
+| `PALHARBOR_ALLOWED_HOSTS`      | empty       | Comma-separated DNS hostnames accepted by Host validation. IP literals and `localhost` are accepted automatically.                         |
+| `PALHARBOR_ALLOWED_ORIGINS`    | empty       | Additional comma-separated origins permitted to make mutations when a reverse proxy changes the apparent host.                             |
+| `ALLOW_UNAUTHENTICATED_REMOTE` | `false`     | Runtime escape hatch for direct-image proxy deployments. The bundled Compose setup still requires PalHarbor credentials.                   |
+| `LOG_LEVEL`                    | `info`      | Pino log level, such as `debug`, `info`, `warn`, or `error`.                                                                               |
+
+To serve trusted LAN or VPN devices directly, set `PALHARBOR_BIND_ADDRESS` to
+the host's address on that trusted network and keep the built-in PalHarbor
+credentials enabled. Use `0.0.0.0` only when a firewall limits which networks
+can connect. Prefer a VPN or an HTTPS reverse proxy; HTTP Basic credentials are
+not encrypted by plain HTTP.
+
+### Activity and database settings
+
+| Variable                  | Default                        | Purpose                                                                              |
+| ------------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`            | `file:./data/palharbor.sqlite` | SQLite, `postgresql:`, or `postgres:` connection URL.                                |
+| `ACTIVITY_ENABLED`        | `true`                         | Enables server-side player activity collection even when no browser is open.         |
+| `ACTIVITY_POLL_SECONDS`   | `15`                           | Player snapshot interval from 5 through 300 seconds. Invalid values fall back to 15. |
+| `ACTIVITY_RETENTION_DAYS` | `90`                           | Retention from 1 through 3650 days. Older activity is pruned daily.                  |
+| `STORE_PLAYER_IPS`        | `false`                        | Opts into storing player IP observations. Client ports are always removed.           |
+
+SQLite data is created automatically inside the persistent
+`palharbor-data` volume. To use PostgreSQL, create an empty database first and
+set a connection URL in `.env`:
+
+```dotenv
+DATABASE_URL=postgresql://palharbor:replace-me@192.168.1.20:5432/palharbor
+```
+
+The database account needs permission to create tables and indexes on first
+start and read/write access afterward.
+
+## Day-to-day Docker commands
+
+```bash
+# Follow logs
+docker compose logs -f palharbor
+
+# Restart
+docker compose restart palharbor
+
+# Stop and remove the container while preserving data
+docker compose down
+
+# Pull and recreate with the newest published images
+docker compose pull
+docker compose up -d
+```
+
+Do not run `docker compose down -v` unless you intentionally want to delete the
+SQLite history and stored map data.
+
+## Published container images
+
+Tagged GitHub releases publish
+`ghcr.io/sublime93/palharbor`. Stable releases also update `latest`; release
+candidates keep only their full prerelease tag. Pin a numbered version for
+repeatable deployments.
+
+Once a release is available, the image can be run without cloning the source:
+
+```bash
+docker run -d \
+  --name palharbor \
+  --restart unless-stopped \
+  --env-file .env \
+  --add-host host.docker.internal:host-gateway \
+  -p 127.0.0.1:4174:4174 \
+  -v palharbor-data:/prod/api/data \
+  ghcr.io/sublime93/palharbor:latest
+```
 
 ## What you get
 
@@ -105,104 +247,132 @@ candidates receive their full prerelease tag but never replace `latest`.
 
 ```text
 Browser dashboard  →  PalHarbor gateway  →  Palworld REST API
-   localhost             localhost          trusted LAN
+  local/LAN/VPN          Docker host         trusted host
 ```
-
-## Project structure
-
-The pnpm workspace contains three applications:
-
-- `apps/web` — Vue, Vite, and Vue Router. Each monitor area is a real page at `/overview`, `/players`, `/activity`, `/world`, `/settings`, or `/commands`. The persistent application shell owns one shared polling lifecycle across route changes.
-- `apps/api` — Fastify and Pino. `src/core` owns configuration, structured logging, and the Fastify factory; `src/router.ts` is the primitive route registrar; `src/routes` contains HTTP route definitions; `src/palworld` owns the endpoint policy; and `src/activity` owns the background tracker.
-- `apps/docs` — VitePress user documentation for installation, configuration, operations, activity tracking, security, and troubleshooting.
-- `packages/database` — Prisma ORM 7, the activity repository, generated SQLite/PostgreSQL clients, and provider adapters.
-
-Production serves the built Vue application through Fastify, including history fallback for direct page links without turning missing `/api` requests into HTML responses.
-
-## Documentation
-
-The repository includes a complete VitePress guide covering installation,
-configuration, day-to-day operation, activity tracking, map assets, security,
-and troubleshooting. Start with the
-[documentation index](apps/docs/index.md), or run it locally:
-
-Run the documentation site locally at [http://localhost:5174](http://localhost:5174):
-
-```bash
-pnpm docs:dev
-```
-
-Use `pnpm docs:build` to validate and generate the static site, or `pnpm docs:preview` to preview the generated output at [http://localhost:4175](http://localhost:4175).
 
 ## Player activity database
 
-Activity collection runs inside Fastify and does not depend on a browser being open. Every successful Palworld player snapshot opens, updates, or closes durable sessions keyed by `userId`. Failed or malformed snapshots leave existing sessions untouched, preventing false disconnects during outages.
+Activity collection runs in the container and does not depend on a browser
+being open. Successful Palworld player snapshots open, update, or close durable
+sessions; failed snapshots do not create false disconnects.
 
-Prisma 7 uses SQLite by default through its libSQL driver adapter. The database at `apps/api/data/palharbor.sqlite` is created automatically and ignored by Git along with its WAL files. Existing installations with a `paldeck.sqlite` database continue using that file so the rename does not hide collected history. The legacy `ACTIVITY_DATABASE_PATH` setting remains supported, but `DATABASE_URL` is preferred.
+The default SQLite database lives at `/prod/api/data/palharbor.sqlite` inside
+the `palharbor-data` volume. Protect and back up that volume: it contains
+player identifiers, names, sessions, levels, timestamps, playtime, and latency
+aggregates. IP observations are stored only when `STORE_PLAYER_IPS=true`, and
+client ports are always removed.
 
-PostgreSQL is supported through Prisma's `pg` adapter. Create the database first, then set a standard `postgresql://` connection URL; PalHarbor creates the activity tables and indexes on startup. Both providers store the same player IDs, names, levels, timestamps, historical IP observations, sessions, and daily latency rollups. Optional client ports are removed before storage, and latency is kept as bounded daily totals and sample counts rather than raw polling records.
+PostgreSQL stores the same information and can be selected with
+`DATABASE_URL`. PalHarbor creates its activity tables and indexes on startup.
+The Activity page provides 7, 14, 30, and 90-day views, while
+`ACTIVITY_RETENTION_DAYS` controls how long the underlying records are kept.
 
-Optional settings in `apps/api/.env`:
+## Automatic map assets
+
+PalHarbor downloads the Palpagos and World Tree terrain images during startup,
+validates them, and generates the local tile pyramid in the persistent
+`palharbor-data` directory. No separate map-source mount or `pnpm` command is
+required.
+
+The default URLs point to the community-maintained PalworldSaveTools copies of
+`T_WorldMap.webp` and `T_TreeMap.webp`. They are not bundled in the PalHarbor
+container and remain Pocketpair artwork. Operators can override either trusted
+HTTPS source in `.env`:
 
 ```dotenv
-DATABASE_URL=file:./data/palharbor.sqlite
-ACTIVITY_ENABLED=true
-ACTIVITY_POLL_SECONDS=15
-ACTIVITY_RETENTION_DAYS=90
-STORE_PLAYER_IPS=false
+PALWORLD_MAP_SYNC_ENABLED=true
+PALWORLD_MAP_PALPAGOS_URL=https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_WorldMap.webp
+PALWORLD_MAP_WORLD_TREE_URL=https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_TreeMap.webp
 ```
 
-For PostgreSQL:
+On each startup PalHarbor uses HTTP cache validators, validates the WebP
+format and 8192 × 8192 dimensions, and hashes the sources. An unchanged source
+reuses the existing tile set; a changed source or Palworld version creates and
+atomically selects a new version. A validated cached download remains usable
+when the remote source is temporarily unavailable. Set
+`PALWORLD_MAP_SYNC_ENABLED=false` to opt out and use the coordinate-grid
+fallback.
 
-```dotenv
-DATABASE_URL=postgresql://palharbor:replace-me@127.0.0.1:5432/palharbor
-```
+## Security
 
-The Activity page reads `GET /api/activity/summary?days=7|14|30|90` and shows tracked players, sessions, total and average playtime, current sessions, daily activity, top players, per-player average latency with sample counts and quality labels, and recent connection history. IP storage is opt-in. Data older than the configured retention period is pruned automatically. Node.js 24.15 or newer is required.
+Palworld warns that its REST API is not intended for public Internet exposure.
+PalHarbor binds to localhost by default, never sends the admin password to Vue,
+and does not include it in tracked files. Pino redacts authorization and
+credential fields, and mutation requests require a PalHarbor-only request
+marker. Non-loopback listeners require built-in PalHarbor credentials unless
+an operator explicitly acknowledges that an authenticated proxy supplies the
+boundary. Keep the gateway on the same machine or a trusted LAN/VPN.
 
-## Local map assets
+The username `admin` works on the tested server but is not specified as a
+default in the official REST documentation. Use a unique admin password and
+rotate it if it has been shared.
 
-The Palworld REST API provides live actor coordinates but does not provide map
-artwork. PalHarbor therefore keeps generated terrain tiles outside Git under
-`apps/api/data/maps/<game-version>`. After exporting `T_WorldMap.webp` and
-`T_TreeMap.webp` from a server installation you are authorized to use, run:
+Found a vulnerability? Please follow the private reporting process in
+[SECURITY.md](SECURITY.md) rather than opening a public issue.
+
+## Development
+
+The Docker workflow above is intended for operators. To work on PalHarbor
+itself, install Node.js 24.15 or newer and use the pnpm version pinned in
+`package.json`:
 
 ```bash
-pnpm maps:sync -- --palpagos /path/to/T_WorldMap.webp --world-tree /path/to/T_TreeMap.webp
+corepack enable
+pnpm install
+cp apps/api/.env.example apps/api/.env
+pnpm dev
 ```
 
-The command reads the current game version from `/v1/api/info`, generates a
-versioned tile pyramid, and atomically selects that version. See the
-documentation site’s map-assets guide for server-root discovery and explicit
-version options. Setting `PALWORLD_MAP_PALPAGOS_SOURCE` and
-`PALWORLD_MAP_WORLD_TREE_SOURCE` makes the same synchronization run
-automatically on startup; unchanged source hashes are skipped. Optional
-cave-entrance coordinates can be imported from a local JSON file; no
-third-party or game-derived coordinate dataset is bundled.
+Set the Palworld connection values in `apps/api/.env`, then open the Vite
+development server at [http://localhost:5173](http://localhost:5173).
 
-## Validation
+For a production-style local run without Docker:
+
+```bash
+pnpm build
+pnpm start
+```
+
+The built application is served at
+[http://127.0.0.1:4174](http://127.0.0.1:4174).
+
+### Validation
 
 ```bash
 pnpm check
 pnpm test:e2e
 ```
 
-`pnpm check` enforces type checking, ESLint, Prettier, per-package coverage
-floors, production builds, and the documentation build. The Playwright suite
-starts the built application, checks client-side deep links, and runs automated
-WCAG A/AA checks. CI also exercises PostgreSQL, audits production dependencies,
-and builds the container.
+`pnpm check` runs type checking, ESLint, Prettier, package coverage suites,
+production builds, and the documentation build. Playwright checks production
+deep links and automated WCAG A/AA rules. CI also exercises PostgreSQL, audits
+production dependencies, and builds the container.
 
-The supplied server was live-tested successfully for info, metrics, players, settings, and `game-data`. The World Data page plots the live actor coordinates, filters population layers, and refreshes only while that page is active. Destructive operations were contract-tested against a mocked upstream and their confirmation flows were browser-tested without kicking players or stopping the live server.
+### Project structure
 
-## Security
+The pnpm workspace contains:
 
-Palworld warns that its REST API is not intended for public Internet exposure. PalHarbor binds to localhost by default, never sends the admin password to Vue, and does not include it in tracked files. Pino redacts authorization and credential fields, and mutation requests require a PalHarbor-only request marker. Non-loopback listeners require built-in PalHarbor credentials unless an operator explicitly acknowledges that an authenticated proxy supplies the boundary. Keep the gateway on the same machine or a trusted LAN/VPN.
+- `apps/web` — Vue dashboard and shared polling lifecycle
+- `apps/api` — Fastify gateway, access controls, Palworld policy, maps, and
+  activity tracking
+- `apps/docs` — VitePress user documentation
+- `packages/database` — Prisma SQLite/PostgreSQL clients and activity
+  repository
 
-The username `admin` works on the tested server but is not specified as a default in the official REST documentation. Use a unique admin password and rotate it if it has been shared.
+Production serves the built Vue application and API from the same Fastify
+origin.
 
-Found a vulnerability? Please follow the private reporting process in
-[SECURITY.md](SECURITY.md) rather than opening a public issue.
+### Documentation
+
+Start with the [documentation index](apps/docs/index.md). To run the VitePress
+site locally:
+
+```bash
+pnpm docs:dev
+```
+
+Use `pnpm docs:build` to validate the static site or `pnpm docs:preview` to
+preview its generated output.
 
 ## Contributing
 

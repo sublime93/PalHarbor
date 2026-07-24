@@ -74,25 +74,26 @@ Set `PALWORLD_USERNAME`, `PALWORLD_PASSWORD`, `PALHARBOR_USERNAME`, and
 does not reach your server, then run:
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
 The dashboard is available at [http://127.0.0.1:4174](http://127.0.0.1:4174).
-The container runs as a non-root user and stores its SQLite database and local
-map data in the `palharbor-data` volume. The Compose port remains bound to the
-host loopback interface; use a VPN or authenticated reverse proxy rather than
-changing that binding for public Internet access.
+The container runs as a non-root user and stores its SQLite database, remote
+map-source cache, and generated tile data in the `palharbor-data` directory.
+The Compose port remains bound to the host loopback interface; use a VPN or
+authenticated reverse proxy rather than changing that binding for public
+Internet access.
 
-To synchronize maps automatically, put the exported WebPs in `map-sources/`
-and add these container paths to the same root `.env`:
+Terrain synchronization is enabled automatically with preconfigured community
+sources. Override either trusted HTTPS URL in the same root `.env` when needed:
 
 ```dotenv
-PALWORLD_MAP_PALPAGOS_SOURCE=/map-sources/T_WorldMap.webp
-PALWORLD_MAP_WORLD_TREE_SOURCE=/map-sources/T_TreeMap.webp
+PALWORLD_MAP_PALPAGOS_URL=https://example.test/T_WorldMap.webp
+PALWORLD_MAP_WORLD_TREE_URL=https://example.test/T_TreeMap.webp
 ```
 
-Set `PALWORLD_MAP_SOURCE_DIR` to another absolute host directory when you do
-not want to copy the source files into `map-sources/`.
+Set `PALWORLD_MAP_SYNC_ENABLED=false` to disable downloading and retain the
+coordinate-grid fallback. No map-source bind mount is required.
 
 ## Confirm the gateway is configured
 
