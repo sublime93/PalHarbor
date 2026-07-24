@@ -11,14 +11,11 @@ const syncScript = resolve(
 
 export type MapSyncRunner = (env: NodeJS.ProcessEnv) => Promise<string>
 
-export function isStartupMapSyncConfigured(
+export function isStartupMapSyncEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return [
-    env.PALWORLD_SERVER_ROOT,
-    env.PALWORLD_MAP_PALPAGOS_SOURCE,
-    env.PALWORLD_MAP_WORLD_TREE_SOURCE,
-  ].some((value) => Boolean(value?.trim()))
+  const configured = env.PALWORLD_MAP_SYNC_ENABLED?.trim().toLowerCase()
+  return !['false', '0', 'no', 'off'].includes(configured ?? '')
 }
 
 function appendOutput(current: string, chunk: string): string {
@@ -63,6 +60,6 @@ export async function synchronizeMapsAtStartup(
   env: NodeJS.ProcessEnv = process.env,
   runner: MapSyncRunner = runSyncScript,
 ): Promise<string | undefined> {
-  if (!isStartupMapSyncConfigured(env)) return undefined
+  if (!isStartupMapSyncEnabled(env)) return undefined
   return runner(env)
 }

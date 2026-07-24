@@ -39,7 +39,24 @@ The username `admin` works on some servers but is not assumed by PalHarbor. Use 
 
 An upstream `404` indicates that the installed Palworld server does not expose that endpoint. Update the dedicated server and verify that its REST API version supports the requested operation.
 
-The world snapshot uses `/v1/api/game-data`, which was added to the Palworld 1.0.0 REST API. There is no separate documented GameData enable switch: update the dedicated server if this endpoint is missing, confirm `RESTAPIEnabled=True`, and restart Palworld.
+The world snapshot uses `/v1/api/game-data`, which was added to the Palworld
+1.0.0 REST API and must be enabled when the server starts. With
+`thijsvanloef/palworld-server-docker`, set `ENABLE_GAMEDATA_API=true`; otherwise
+add the supported `-enable-gamedata-api` launch argument. Confirm
+`RESTAPIEnabled=True`, restart Palworld, and verify the startup command contains
+the flag.
+
+## Automatic terrain synchronization fails
+
+PalHarbor downloads both terrain WebPs before generating tiles. Check the
+startup warning for the failing URL or validation detail. Remote sources must
+use HTTPS and return 8192 × 8192 WebP images no larger than 32 MiB.
+
+When a previously validated download exists, PalHarbor reuses it during a
+temporary remote outage. On a first start, verify outbound HTTPS and DNS access
+from the container. Override `PALWORLD_MAP_PALPAGOS_URL` or
+`PALWORLD_MAP_WORLD_TREE_URL` when using another trusted source, or set
+`PALWORLD_MAP_SYNC_ENABLED=false` to keep the grid fallback.
 
 ## Dashboard loads but API requests fail in development
 

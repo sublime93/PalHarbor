@@ -1335,8 +1335,8 @@ watch(selectedEntrance, requestDraw)
       class="world-map-fallback"
       role="status"
     >
-      {{ regionMeta.label }} terrain not installed · run pnpm maps:sync · grid
-      fallback active
+      {{ regionMeta.label }} terrain unavailable · check automatic map sync logs
+      · grid fallback active
     </div>
 
     <div
