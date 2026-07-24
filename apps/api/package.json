@@ -25,7 +25,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@fastify/static": "10.1.0",
+    "@fastify/static": "10.1.2",
     "@app/database": "workspace:0.1.0",
     "dotenv": "17.4.2",
     "fastify": "5.10.0",
