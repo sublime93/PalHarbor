@@ -289,7 +289,8 @@ On each startup PalHarbor uses HTTP cache validators, validates the WebP
 format and 8192 × 8192 dimensions, and hashes the sources. An unchanged source
 reuses the existing tile set; a changed source or Palworld version creates and
 atomically selects a new version. A validated cached download remains usable
-when the remote source is temporarily unavailable. Set
+when the remote source is temporarily unavailable. Initial generation reports
+download decisions and per-region tile counts in the container logs. Set
 `PALWORLD_MAP_SYNC_ENABLED=false` to opt out and use the coordinate-grid
 fallback.
 

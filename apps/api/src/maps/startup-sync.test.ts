@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  completeOutputLines,
   isStartupMapSyncEnabled,
   synchronizeMapsAtStartup,
 } from './startup-sync.js'
@@ -11,7 +12,35 @@ describe('startup map synchronization', () => {
     await expect(synchronizeMapsAtStartup({}, runner)).resolves.toBe(
       'Map assets synchronized',
     )
-    expect(runner).toHaveBeenCalledWith({})
+    expect(runner).toHaveBeenCalledWith({}, undefined)
+  })
+
+  it('streams progress messages from the importer', async () => {
+    const progress = vi.fn()
+    const runner = vi.fn(async (_env, onProgress) => {
+      onProgress?.('palpagos tile progress: 85/341 (25%)')
+      return 'Map assets synchronized'
+    })
+
+    await synchronizeMapsAtStartup({}, runner, progress)
+
+    expect(progress).toHaveBeenCalledWith(
+      'palpagos tile progress: 85/341 (25%)',
+    )
+  })
+
+  it('extracts complete progress lines across process output chunks', () => {
+    const first = completeOutputLines('', 'Downloading maps\r\nGenerating')
+    expect(first).toEqual({
+      lines: ['Downloading maps'],
+      remainder: 'Generating',
+    })
+
+    const second = completeOutputLines(first.remainder, ' tiles\nDone\n')
+    expect(second).toEqual({
+      lines: ['Generating tiles', 'Done'],
+      remainder: '',
+    })
   })
 
   it.each(['false', '0', 'no', 'off', ' OFF '])(

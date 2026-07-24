@@ -19,12 +19,20 @@ dotenv.config({ path: resolve(apiDirectory, '.env'), quiet: true })
 const TILE_SIZE = 512
 const MAX_ZOOM = 4
 const MAP_SIZE = TILE_SIZE * 2 ** MAX_ZOOM
+const TILES_PER_REGION = Array.from(
+  { length: MAX_ZOOM + 1 },
+  (_, zoom) => 4 ** zoom,
+).reduce((total, count) => total + count, 0)
 const MAX_REMOTE_SOURCE_BYTES = 32 * 1024 * 1024
 const REMOTE_SOURCE_TIMEOUT_MS = 30_000
 const REMOTE_SOURCE_METADATA = 'remote-sources.json'
 const REGIONS = {
   palpagos: 'T_WorldMap.webp',
   'world-tree': 'T_TreeMap.webp',
+}
+
+function reportProgress(message) {
+  process.stdout.write(`${message}\n`)
 }
 export const DEFAULT_MAP_SOURCE_URLS = {
   palpagos:
@@ -305,15 +313,20 @@ async function fetchRemoteSource(
   }
 }
 
-async function downloadRemoteSources(dataRoot, sourceUrls, fetchImpl = fetch) {
+async function downloadRemoteSources(
+  dataRoot,
+  sourceUrls,
+  fetchImpl = fetch,
+  onProgress = reportProgress,
+) {
   const cacheRoot = join(dataRoot, '.sources')
   const metadataPath = join(cacheRoot, REMOTE_SOURCE_METADATA)
   await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
   const metadata = await readRemoteSourceMetadata(metadataPath)
   const sources = {}
-  const messages = []
 
   for (const region of Object.keys(sourceUrls)) {
+    onProgress(`Checking ${region} remote map source`)
     const result = await fetchRemoteSource(
       region,
       sourceUrls[region],
@@ -323,11 +336,11 @@ async function downloadRemoteSources(dataRoot, sourceUrls, fetchImpl = fetch) {
     )
     sources[region] = result.path
     metadata.sources[region] = result.metadata
-    messages.push(result.message)
+    onProgress(result.message)
   }
 
   await atomicJson(metadataPath, metadata)
-  return { sources, messages }
+  return sources
 }
 
 async function versionMatchesSources(destination, gameVersion, sourceHashes) {
@@ -408,14 +421,23 @@ async function verifySource(path, region) {
   }
 }
 
-async function generateRegion(source, region, destination) {
+async function generateRegion(
+  source,
+  region,
+  destination,
+  onProgress = reportProgress,
+) {
+  onProgress(`Validating ${region} map source`)
   await verifySource(source, region)
+  onProgress(`Generating ${region} fallback image`)
   const fallback = join(destination, `${region}.webp`)
   await sharp(source)
     .resize(MAP_SIZE / 2, MAP_SIZE / 2, { fit: 'fill' })
     .webp({ quality: 88, smartSubsample: true })
     .toFile(fallback)
 
+  let completedTiles = 0
+  onProgress(`Generating ${region} tile pyramid (${TILES_PER_REGION} tiles)`)
   for (let zoom = 0; zoom <= MAX_ZOOM; zoom += 1) {
     const dimension = 2 ** zoom
     const levelSize = dimension * TILE_SIZE
@@ -444,8 +466,14 @@ async function generateRegion(source, region, destination) {
           .webp({ quality: 88, smartSubsample: true })
           .toFile(tilePath)
       }
+      completedTiles += dimension
+      const percent = Math.round((completedTiles / TILES_PER_REGION) * 100)
+      onProgress(
+        `${region} tile progress: ${completedTiles}/${TILES_PER_REGION} (${percent}%)`,
+      )
     }
   }
+  onProgress(`Finished ${region} map assets`)
 }
 
 async function atomicJson(path, value) {
@@ -459,6 +487,7 @@ async function atomicJson(path, value) {
 async function main() {
   const args = argumentsFrom(process.argv.slice(2))
   const gameVersion = safeVersion(args.version ?? (await serverVersion()))
+  reportProgress(`Synchronizing map assets for Palworld ${gameVersion}`)
   const dataRoot = resolve(
     args['data-dir'] ??
       process.env.MAP_DATA_PATH ??
@@ -491,9 +520,10 @@ async function main() {
     )
   }
   if (Object.keys(remoteSourceUrls).length) {
-    const downloaded = await downloadRemoteSources(dataRoot, remoteSourceUrls)
-    Object.assign(sources, downloaded.sources)
-    process.stdout.write(`${downloaded.messages.join('\n')}\n`)
+    Object.assign(
+      sources,
+      await downloadRemoteSources(dataRoot, remoteSourceUrls),
+    )
   }
 
   const resolvedSources = {
@@ -514,8 +544,8 @@ async function main() {
   const destination = strictChildPath(dataRoot, gameVersion)
   if (await versionMatchesSources(destination, gameVersion, sourceHashes)) {
     await atomicJson(join(dataRoot, 'current.json'), { gameVersion })
-    process.stdout.write(
-      `Palworld ${gameVersion} map assets already match the configured sources\n`,
+    reportProgress(
+      `Palworld ${gameVersion} map assets already match the configured sources`,
     )
     return
   }
@@ -528,6 +558,9 @@ async function main() {
   await mkdir(temporary, { recursive: true, mode: 0o700 })
 
   try {
+    reportProgress(
+      `Generating ${Object.keys(REGIONS).length * TILES_PER_REGION} map tiles for Palworld ${gameVersion}`,
+    )
     await generateRegion(resolvedSources.palpagos, 'palpagos', temporary)
     await generateRegion(resolvedSources['world-tree'], 'world-tree', temporary)
     if (resolvedCaveEntrances) {
@@ -560,8 +593,8 @@ async function main() {
     await rm(destination, { recursive: true, force: true })
     await rename(temporary, destination)
     await atomicJson(join(dataRoot, 'current.json'), { gameVersion })
-    process.stdout.write(
-      `Generated Palworld ${gameVersion} map assets in ${destination}\n`,
+    reportProgress(
+      `Generated Palworld ${gameVersion} map assets in ${destination}`,
     )
   } catch (error) {
     await rm(temporary, { recursive: true, force: true })

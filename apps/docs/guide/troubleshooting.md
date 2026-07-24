@@ -52,6 +52,10 @@ PalHarbor downloads both terrain WebPs before generating tiles. Check the
 startup warning for the failing URL or validation detail. Remote sources must
 use HTTPS and return 8192 × 8192 WebP images no larger than 32 MiB.
 
+On the first successful run, the gateway waits for tile generation before it
+listens on port 4174. Follow `docker compose logs -f palharbor`; download/cache
+messages and per-region tile counts confirm that synchronization is advancing.
+
 When a previously validated download exists, PalHarbor reuses it during a
 temporary remote outage. On a first start, verify outbound HTTPS and DNS access
 from the container. Override `PALWORLD_MAP_PALPAGOS_URL` or
