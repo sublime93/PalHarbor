@@ -9,7 +9,16 @@ const syncScript = resolve(
   '../../scripts/sync-map-assets.mjs',
 )
 
-export type MapSyncRunner = (env: NodeJS.ProcessEnv) => Promise<string>
+export type MapSyncProgress = (message: string) => void
+export type MapSyncRunner = (
+  env: NodeJS.ProcessEnv,
+  onProgress?: MapSyncProgress,
+) => Promise<string>
+
+export interface CompleteOutput {
+  lines: string[]
+  remainder: string
+}
 
 export function isStartupMapSyncEnabled(
   env: NodeJS.ProcessEnv = process.env,
@@ -22,7 +31,24 @@ function appendOutput(current: string, chunk: string): string {
   return `${current}${chunk}`.slice(-MAX_CAPTURED_OUTPUT)
 }
 
-async function runSyncScript(env: NodeJS.ProcessEnv): Promise<string> {
+export function completeOutputLines(
+  remainder: string,
+  chunk: string,
+): CompleteOutput {
+  const parts = `${remainder}${chunk}`.split(/\r?\n/)
+  return {
+    lines: parts
+      .slice(0, -1)
+      .map((line) => line.trim())
+      .filter(Boolean),
+    remainder: parts.at(-1) ?? '',
+  }
+}
+
+async function runSyncScript(
+  env: NodeJS.ProcessEnv,
+  onProgress?: MapSyncProgress,
+): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(process.execPath, [syncScript], {
       env,
@@ -30,17 +56,23 @@ async function runSyncScript(env: NodeJS.ProcessEnv): Promise<string> {
     })
     let stdout = ''
     let stderr = ''
+    let pendingProgress = ''
 
     child.stdout.setEncoding('utf8')
     child.stderr.setEncoding('utf8')
     child.stdout.on('data', (chunk: string) => {
       stdout = appendOutput(stdout, chunk)
+      const completed = completeOutputLines(pendingProgress, chunk)
+      pendingProgress = completed.remainder
+      for (const line of completed.lines) onProgress?.(line)
     })
     child.stderr.on('data', (chunk: string) => {
       stderr = appendOutput(stderr, chunk)
     })
     child.once('error', reject)
     child.once('close', (code, signal) => {
+      const finalProgress = pendingProgress.trim()
+      if (finalProgress) onProgress?.(finalProgress)
       if (code === 0) {
         resolvePromise(stdout.trim())
         return
@@ -59,7 +91,8 @@ async function runSyncScript(env: NodeJS.ProcessEnv): Promise<string> {
 export async function synchronizeMapsAtStartup(
   env: NodeJS.ProcessEnv = process.env,
   runner: MapSyncRunner = runSyncScript,
+  onProgress?: MapSyncProgress,
 ): Promise<string | undefined> {
   if (!isStartupMapSyncEnabled(env)) return undefined
-  return runner(env)
+  return runner(env, onProgress)
 }

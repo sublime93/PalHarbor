@@ -38,6 +38,11 @@ Automatic synchronization is enabled by default. PalHarbor:
 5. Generates and atomically selects a new tile set when the source or game
    version changes.
 
+Initial generation is CPU intensive, so the gateway begins listening after the
+tile set is ready. Container logs report download/cache decisions and
+incremental tile counts for each region throughout this work. Later startups
+reuse matching tiles and complete quickly.
+
 A temporary remote outage reuses the last validated source cache. If no valid
 cache exists, PalHarbor logs a warning, starts normally, and keeps serving the
 last successful map version or the coordinate-grid fallback.

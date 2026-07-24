@@ -34,12 +34,15 @@ if (isMain) {
 
   try {
     try {
-      if (isStartupMapSyncEnabled()) {
+      const mapSyncEnabled = isStartupMapSyncEnabled()
+      if (mapSyncEnabled) {
         app.log.info('Automatic map synchronization starting')
       }
-      const result = await synchronizeMapsAtStartup()
-      if (result) {
-        app.log.info({ result }, 'Automatic map synchronization completed')
+      await synchronizeMapsAtStartup(process.env, undefined, (message) => {
+        app.log.info({ subsystem: 'map-sync' }, message)
+      })
+      if (mapSyncEnabled) {
+        app.log.info('Automatic map synchronization completed')
       }
     } catch (error) {
       app.log.warn(
