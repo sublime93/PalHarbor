@@ -28,7 +28,7 @@
     "@fastify/static": "10.1.2",
     "@app/database": "workspace:0.1.0",
     "dotenv": "17.4.2",
-    "fastify": "5.10.0",
+    "fastify": "5.11.0",
     "sharp": "0.35.3"
   },
   "devDependencies": {
