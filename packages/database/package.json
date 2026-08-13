@@ -30,14 +30,14 @@
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
-    "@prisma/adapter-libsql": "7.9.0",
-    "@prisma/adapter-pg": "7.9.0",
-    "@prisma/client": "7.9.0",
-    "pg": "8.22.0"
+    "@prisma/adapter-libsql": "7.9.1",
+    "@prisma/adapter-pg": "7.9.1",
+    "@prisma/client": "7.9.1",
+    "pg": "8.23.0"
   },
   "devDependencies": {
     "@types/node": "26.1.1",
-    "@types/pg": "8.20.0",
+    "@types/pg": "8.21.0",
     "@vitest/coverage-v8": "4.1.10",
     "dotenv": "17.4.2",
     "prisma": "7.9.0",
