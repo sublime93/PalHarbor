@@ -19,9 +19,26 @@ dotenv.config({ path: resolve(apiDirectory, '.env'), quiet: true })
 const TILE_SIZE = 512
 const MAX_ZOOM = 4
 const MAP_SIZE = TILE_SIZE * 2 ** MAX_ZOOM
+const TILES_PER_REGION = Array.from(
+  { length: MAX_ZOOM + 1 },
+  (_, zoom) => 4 ** zoom,
+).reduce((total, count) => total + count, 0)
+const MAX_REMOTE_SOURCE_BYTES = 32 * 1024 * 1024
+const REMOTE_SOURCE_TIMEOUT_MS = 30_000
+const REMOTE_SOURCE_METADATA = 'remote-sources.json'
 const REGIONS = {
   palpagos: 'T_WorldMap.webp',
   'world-tree': 'T_TreeMap.webp',
+}
+
+function reportProgress(message) {
+  process.stdout.write(`${message}\n`)
+}
+export const DEFAULT_MAP_SOURCE_URLS = {
+  palpagos:
+    'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_WorldMap.webp',
+  'world-tree':
+    'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/resources/assets/maps/T_TreeMap.webp',
 }
 
 function argumentsFrom(argv) {
@@ -122,6 +139,210 @@ async function digest(path) {
     .digest('hex')
 }
 
+export function validatedRemoteSourceUrl(value, fallback) {
+  const configured = String(value ?? '').trim() || fallback
+  let parsed
+  try {
+    parsed = new URL(configured)
+  } catch {
+    throw new Error(`Invalid remote map source URL: ${configured}`)
+  }
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.hash
+  ) {
+    throw new Error(
+      `Remote map source URLs must use HTTPS without credentials or fragments: ${configured}`,
+    )
+  }
+  return parsed.href
+}
+
+export async function responseBodyWithinLimit(
+  response,
+  maxBytes = MAX_REMOTE_SOURCE_BYTES,
+) {
+  const advertisedLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(advertisedLength) && advertisedLength > maxBytes) {
+    throw new Error(
+      `Remote map source exceeds the ${maxBytes} byte download limit.`,
+    )
+  }
+  if (!response.body) {
+    throw new Error('Remote map source returned an empty response body.')
+  }
+
+  const reader = response.body.getReader()
+  const chunks = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > maxBytes) {
+      await reader.cancel()
+      throw new Error(
+        `Remote map source exceeds the ${maxBytes} byte download limit.`,
+      )
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks, total)
+}
+
+async function readRemoteSourceMetadata(path) {
+  try {
+    const parsed = JSON.parse(await readFile(path, 'utf8'))
+    if (
+      parsed?.schemaVersion === 1 &&
+      parsed.sources &&
+      typeof parsed.sources === 'object'
+    ) {
+      return parsed
+    }
+  } catch {
+    // A missing or malformed cache manifest is repaired after downloading.
+  }
+  return { schemaVersion: 1, sources: {} }
+}
+
+async function isValidCachedSource(path, region) {
+  try {
+    await verifySource(path, region)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function fetchRemoteSource(
+  region,
+  sourceUrl,
+  cacheRoot,
+  previousMetadata,
+  fetchImpl = fetch,
+) {
+  const destination = join(cacheRoot, REGIONS[region])
+  const cacheIsValid = await isValidCachedSource(destination, region)
+  const headers = { Accept: 'image/webp,application/octet-stream;q=0.8' }
+  if (cacheIsValid && previousMetadata?.url === sourceUrl) {
+    if (previousMetadata.etag) {
+      headers['If-None-Match'] = previousMetadata.etag
+    }
+    if (previousMetadata.lastModified) {
+      headers['If-Modified-Since'] = previousMetadata.lastModified
+    }
+  }
+
+  let response
+  try {
+    response = await fetchImpl(sourceUrl, {
+      headers,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(REMOTE_SOURCE_TIMEOUT_MS),
+    })
+  } catch (error) {
+    if (cacheIsValid) {
+      return {
+        path: destination,
+        metadata: previousMetadata ?? {
+          url: sourceUrl,
+          sha256: await digest(destination),
+        },
+        message: `${region} remote source was unavailable; reused the validated cache`,
+      }
+    }
+    throw new Error(
+      `Unable to download ${region} map source from ${sourceUrl}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    )
+  }
+
+  if (response.status === 304 && cacheIsValid) {
+    return {
+      path: destination,
+      metadata: previousMetadata,
+      message: `${region} remote source is unchanged`,
+    }
+  }
+  if (!response.ok) {
+    if (cacheIsValid) {
+      return {
+        path: destination,
+        metadata: previousMetadata ?? {
+          url: sourceUrl,
+          sha256: await digest(destination),
+        },
+        message: `${region} remote source returned ${response.status}; reused the validated cache`,
+      }
+    }
+    throw new Error(
+      `${region} remote map source returned status ${response.status}.`,
+    )
+  }
+  if (new URL(response.url || sourceUrl).protocol !== 'https:') {
+    throw new Error(`${region} remote map source redirected away from HTTPS.`)
+  }
+
+  const temporary = `${destination}.tmp-${process.pid}`
+  await writeFile(temporary, await responseBodyWithinLimit(response), {
+    mode: 0o600,
+  })
+  try {
+    await verifySource(temporary, region)
+    await rename(temporary, destination)
+  } catch (error) {
+    await rm(temporary, { force: true })
+    throw error
+  }
+
+  return {
+    path: destination,
+    metadata: {
+      url: sourceUrl,
+      etag: response.headers.get('etag') || undefined,
+      lastModified: response.headers.get('last-modified') || undefined,
+      sha256: await digest(destination),
+      downloadedAt: new Date().toISOString(),
+    },
+    message: `Downloaded ${region} map source`,
+  }
+}
+
+async function downloadRemoteSources(
+  dataRoot,
+  sourceUrls,
+  fetchImpl = fetch,
+  onProgress = reportProgress,
+) {
+  const cacheRoot = join(dataRoot, '.sources')
+  const metadataPath = join(cacheRoot, REMOTE_SOURCE_METADATA)
+  await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
+  const metadata = await readRemoteSourceMetadata(metadataPath)
+  const sources = {}
+
+  for (const region of Object.keys(sourceUrls)) {
+    onProgress(`Checking ${region} remote map source`)
+    const result = await fetchRemoteSource(
+      region,
+      sourceUrls[region],
+      cacheRoot,
+      metadata.sources[region],
+      fetchImpl,
+    )
+    sources[region] = result.path
+    metadata.sources[region] = result.metadata
+    onProgress(result.message)
+  }
+
+  await atomicJson(metadataPath, metadata)
+  return sources
+}
+
 async function versionMatchesSources(destination, gameVersion, sourceHashes) {
   try {
     const manifest = JSON.parse(
@@ -189,21 +410,34 @@ async function importCaveEntrances(path, destination) {
 
 async function verifySource(path, region) {
   const metadata = await sharp(path).metadata()
-  if (metadata.width !== MAP_SIZE || metadata.height !== MAP_SIZE) {
+  if (
+    metadata.format !== 'webp' ||
+    metadata.width !== MAP_SIZE ||
+    metadata.height !== MAP_SIZE
+  ) {
     throw new Error(
-      `${region} must be an ${MAP_SIZE} × ${MAP_SIZE} image; received ${metadata.width} × ${metadata.height}.`,
+      `${region} must be an ${MAP_SIZE} × ${MAP_SIZE} WebP image; received ${metadata.format ?? 'unknown'} ${metadata.width} × ${metadata.height}.`,
     )
   }
 }
 
-async function generateRegion(source, region, destination) {
+async function generateRegion(
+  source,
+  region,
+  destination,
+  onProgress = reportProgress,
+) {
+  onProgress(`Validating ${region} map source`)
   await verifySource(source, region)
+  onProgress(`Generating ${region} fallback image`)
   const fallback = join(destination, `${region}.webp`)
   await sharp(source)
     .resize(MAP_SIZE / 2, MAP_SIZE / 2, { fit: 'fill' })
     .webp({ quality: 88, smartSubsample: true })
     .toFile(fallback)
 
+  let completedTiles = 0
+  onProgress(`Generating ${region} tile pyramid (${TILES_PER_REGION} tiles)`)
   for (let zoom = 0; zoom <= MAX_ZOOM; zoom += 1) {
     const dimension = 2 ** zoom
     const levelSize = dimension * TILE_SIZE
@@ -232,8 +466,14 @@ async function generateRegion(source, region, destination) {
           .webp({ quality: 88, smartSubsample: true })
           .toFile(tilePath)
       }
+      completedTiles += dimension
+      const percent = Math.round((completedTiles / TILES_PER_REGION) * 100)
+      onProgress(
+        `${region} tile progress: ${completedTiles}/${TILES_PER_REGION} (${percent}%)`,
+      )
     }
   }
+  onProgress(`Finished ${region} map assets`)
 }
 
 async function atomicJson(path, value) {
@@ -247,18 +487,18 @@ async function atomicJson(path, value) {
 async function main() {
   const args = argumentsFrom(process.argv.slice(2))
   const gameVersion = safeVersion(args.version ?? (await serverVersion()))
+  reportProgress(`Synchronizing map assets for Palworld ${gameVersion}`)
   const dataRoot = resolve(
     args['data-dir'] ??
       process.env.MAP_DATA_PATH ??
       resolve(apiDirectory, 'data/maps'),
   )
-  const serverRoot = args['server-root'] ?? process.env.PALWORLD_SERVER_ROOT
-  const caveEntrancesSource =
-    args['cave-entrances'] ?? process.env.PALWORLD_CAVE_ENTRANCES_SOURCE
+  await mkdir(dataRoot, { recursive: true, mode: 0o700 })
+  const serverRoot = args['server-root']
+  const caveEntrancesSource = args['cave-entrances']
   const sources = {
-    palpagos: args.palpagos ?? process.env.PALWORLD_MAP_PALPAGOS_SOURCE,
-    'world-tree':
-      args['world-tree'] ?? process.env.PALWORLD_MAP_WORLD_TREE_SOURCE,
+    palpagos: args.palpagos,
+    'world-tree': args['world-tree'],
   }
 
   if (serverRoot) {
@@ -266,14 +506,24 @@ async function main() {
       sources[region] ??= await findFile(serverRoot, filename)
     }
   }
-  for (const [region, filename] of Object.entries(REGIONS)) {
-    if (!sources[region]) {
-      throw new Error(
-        `No ${region} source was found. The Palworld REST API does not expose terrain artwork. ` +
-          `Export ${filename} from a server installation you are authorized to use, then pass ` +
-          `--${region} <path> or set PALWORLD_MAP_${region === 'palpagos' ? 'PALPAGOS' : 'WORLD_TREE'}_SOURCE.`,
-      )
-    }
+
+  const remoteSourceUrls = {}
+  for (const region of Object.keys(REGIONS)) {
+    if (sources[region]) continue
+    const environmentName =
+      region === 'palpagos'
+        ? 'PALWORLD_MAP_PALPAGOS_URL'
+        : 'PALWORLD_MAP_WORLD_TREE_URL'
+    remoteSourceUrls[region] = validatedRemoteSourceUrl(
+      args[`${region}-url`] ?? process.env[environmentName],
+      DEFAULT_MAP_SOURCE_URLS[region],
+    )
+  }
+  if (Object.keys(remoteSourceUrls).length) {
+    Object.assign(
+      sources,
+      await downloadRemoteSources(dataRoot, remoteSourceUrls),
+    )
   }
 
   const resolvedSources = {
@@ -291,12 +541,11 @@ async function main() {
       : {}),
   }
 
-  await mkdir(dataRoot, { recursive: true, mode: 0o700 })
   const destination = strictChildPath(dataRoot, gameVersion)
   if (await versionMatchesSources(destination, gameVersion, sourceHashes)) {
     await atomicJson(join(dataRoot, 'current.json'), { gameVersion })
-    process.stdout.write(
-      `Palworld ${gameVersion} map assets already match the configured sources\n`,
+    reportProgress(
+      `Palworld ${gameVersion} map assets already match the configured sources`,
     )
     return
   }
@@ -309,6 +558,9 @@ async function main() {
   await mkdir(temporary, { recursive: true, mode: 0o700 })
 
   try {
+    reportProgress(
+      `Generating ${Object.keys(REGIONS).length * TILES_PER_REGION} map tiles for Palworld ${gameVersion}`,
+    )
     await generateRegion(resolvedSources.palpagos, 'palpagos', temporary)
     await generateRegion(resolvedSources['world-tree'], 'world-tree', temporary)
     if (resolvedCaveEntrances) {
@@ -341,8 +593,8 @@ async function main() {
     await rm(destination, { recursive: true, force: true })
     await rename(temporary, destination)
     await atomicJson(join(dataRoot, 'current.json'), { gameVersion })
-    process.stdout.write(
-      `Generated Palworld ${gameVersion} map assets in ${destination}\n`,
+    reportProgress(
+      `Generated Palworld ${gameVersion} map assets in ${destination}`,
     )
   } catch (error) {
     await rm(temporary, { recursive: true, force: true })
