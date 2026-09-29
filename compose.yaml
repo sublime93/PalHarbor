@@ -83,4 +83,7 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
-      - ./palharbor-data:/prod/api/data
+      - palharbor-data:/prod/api/data
+
+volumes:
+  palharbor-data:
